@@ -306,6 +306,7 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	
 
 	</table>
+	<button onclick="memRangeQuery()">Update Memory Info</button>
 
 
 	<h2>privilege:</h2><h4 id="privilege">loading</h4>
@@ -322,43 +323,22 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 
 		return [{from:0x80200000,length:16},{from:0x80201000,length:32}];
 	}
+	function memRangeQuery(){
+		vscode.postMessage(getMemRangeList());
+	}
 	window.addEventListener('message', event => {
 		const message = event.data; // The JSON data our extension sent
 		if(message.regValues){
 			document.getElementById('regTable').innerHTML="";
-			let regs = message.regValues.flat().flat();
-			for(let i = 0;i<regs.length;i+=4){
-				document.getElementById('regTable').innerHTML+=     \`
-				<tbody>
-				<tr>
-					<td>\${riscvRegNames[  regs[i+1]  ] }</td>
-					<td>\${regs[i+3]}</td>
-				</tr>
-				</tbody>
-				\`;
-			}
-			let pc = regs[4*riscvRegNames.indexOf("pc")+3];
-			document.getElementById('pc').innerHTML=pc;
-			if(parseInt(pc)<parseInt(0x80200000)){ 
-				document.getElementById('sbi').innerHTML="yes";
-				//czy TODO not completely correct. There's small parts BEFORE SBI
-			}
-			else{
-				document.getElementById('sbi').innerHTML="no";
-			}
+				document.getElementById('regTable').innerHTML+=JSON.stringify(message.regValues);
 		}
 		if(message.memValues){
 			let memValues = message.memValues;
 			// document.getElementById('memTable').innerHTML+=JSON.stringify(message.memValues)+"<br>";
-			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.data)+" "+JSON.stringify(memValues.from)+" "+JSON.stringify(memValues.length)+"<br>";
-
-
-
+			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.data)+" ";
+			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.from)+" ";
+			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.length)+" <br>";
 			
-
-		}
-		if(message.memRangeQuery){
-			vscode.postMessage(getMemRangeList());
 		}
 	});
     </script>
