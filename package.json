@@ -20,7 +20,10 @@
 	"activationEvents": [
 		"onCommand:code-debug.examineMemoryLocation",
 		"onCommand:code-debug.getFileNameNoExt",
-		"onCommand:code-debug.getFileBasenameNoExt"
+		"onCommand:code-debug.getFileBasenameNoExt",
+		"onCommand:core-debugger.startPanel",
+		"onCommand:core-debugger.updatePanel",
+		"onDebug"
 	],
 	"categories": [
 		"Debuggers"
@@ -39,6 +42,16 @@
 			{
 				"command": "code-debug.examineMemoryLocation",
 				"title": "Code-Debug: Examine memory location"
+			},
+			{
+				"command": "core-debugger.startPanel",
+				"title": "Start new core-debugger panel",
+				"category": "CoreDebugger"
+			},
+			{
+				"command": "core-debugger.updatePanel",
+				"title": "update core-debugger panel",
+				"category": "CoreDebugger"
 			}
 		],
 		"breakpoints": [

@@ -1,0 +1,74 @@
+function getWebviewContent(regNames?: string, regValues?: string) {
+	return `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Cat Coding</title>
+	</head>
+	<body>
+
+	<div class="container"><br>
+	<h3>
+	  Users in database
+	</h3>
+	<br>
+	<table>
+	  <thead>
+		<tr>
+		  <td>
+			<b>First name</b>
+		  </td>
+		  <td>
+			<b>Last Name</b>
+		  </td>
+		</tr>
+	  </thead>
+	  <tr id="root"></tr>
+	</table>
+  </div>
+  <br>
+
+		<p>privilege:</p><p id="privilege">unknown</p>
+		<p>SBI:</p><p id="sbi">unknown</p>
+
+		<p>raw info:</p><p id = raw></p>
+
+		<p> violent raw: </p>
+		<quote id="regNames">${regNames}</quote>
+		<p id="regValues">${regValues}</p>
+
+	</body>
+	<script>
+        const privilege = document.getElementById('privilege');
+		const raw = document.getElementById('raw');
+		const regNames = document.getElementById('regNames');
+		const regValues = document.getElementById('regValues');
+
+		window.addEventListener('message', event => {
+            const message = event.data; // The JSON data our extension sent
+			if(message.regNames){
+				regNames.innerHTML=message.regNames;
+			}
+			else if(message.regValues){
+			}
+			let regex1 = /(?=(?<=[\{,])(\w+)(?==))|(?<=(?<=[\{,])(\w+)(?==))/g;
+			let regex2=/\=/g
+
+			let obj = JSON.parse(regValues.replace(regex,"\"").replace(regex2,":"))
+			var root = document.getElementById('root');
+obj.forEach(element => root.insertAdjacentHTML('beforebegin', `<tr><td>\${element.number}</td><td>\${element.value}</td></tr>`));
+
+			});
+
+			
+			
+
+
+
+
+
+    </script>
+
+	</html>`;
+}

@@ -1,7 +1,7 @@
 import * as DebugAdapter from 'vscode-debugadapter';
 import { DebugSession, InitializedEvent, TerminatedEvent, StoppedEvent, ThreadEvent, OutputEvent, ContinuedEvent, Thread, StackFrame, Scope, Source, Handles } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { Breakpoint, IBackend, Variable, VariableObject, ValuesFormattingMode, MIError } from './backend/backend';
+import { Breakpoint, IBackend, Variable, VariableObject, ValuesFormattingMode, MIError, Register } from './backend/backend';
 import { MINode } from './backend/mi_parse';
 import { expandValue, isExpandable } from './backend/gdb_expansion';
 import { MI2 } from './backend/mi2/mi2';
@@ -10,6 +10,11 @@ import * as systemPath from "path";
 import * as net from "net";
 import * as os from "os";
 import * as fs from "fs";
+import * as vscode from "vscode";
+
+
+
+
 
 class ExtendedVariable {
 	constructor(public name, public options) {
@@ -43,6 +48,7 @@ export class MI2DebugSession extends DebugSession {
 	protected miDebugger: MI2;
 	protected commandServer: net.Server;
 	protected serverPath: string;
+	protected running :boolean=false;
 
 	public constructor(debuggerLinesStartAt1: boolean, isServer: boolean = false) {
 		super(debuggerLinesStartAt1, isServer);
@@ -63,6 +69,17 @@ export class MI2DebugSession extends DebugSession {
 		this.miDebugger.on("thread-created", this.threadCreatedEvent.bind(this));
 		this.miDebugger.on("thread-exited", this.threadExitedEvent.bind(this));
 		this.miDebugger.once("debug-ready", (() => this.sendEvent(new InitializedEvent())));
+		let that = this;
+		/* czy
+		vscode.debug.registerDebugAdapterTrackerFactory('*', {
+			createDebugAdapterTracker() {
+			  return {
+				onWillReceiveMessage: () => that.sendEvent({ event: "customEvent", body: ["testsRoot"] } as DebugProtocol.Event),
+				onDidSendMessage:() => that.sendEvent({ event: "customEvent", body: ["testsRoot"] } as DebugProtocol.Event)
+			  };
+			}
+		  });
+		  */
 		try {
 			this.commandServer = net.createServer(c => {
 				c.on("data", data => {
@@ -85,11 +102,12 @@ export class MI2DebugSession extends DebugSession {
 			});
 			if (!fs.existsSync(systemPath.join(os.tmpdir(), "code-debug-sockets")))
 				fs.mkdirSync(systemPath.join(os.tmpdir(), "code-debug-sockets"));
-			this.commandServer.listen(this.serverPath = systemPath.join(os.tmpdir(), "code-debug-sockets", ("Debug-Instance-" + Math.floor(Math.random() * 36 * 36 * 36 * 36).toString(36)).toLowerCase()));
+			this.commandServer.listen(this.serverPath = systemPath.join(os.tmpdir(), "code-debug-sockets", ("Debug-Instance-" + new Date(Date.now())/*Math.floor(Math.random() * 36 * 36 * 36 * 36).toString(36)*/).toLowerCase()));
 		} catch (e) {
 			if (process.platform != "win32")
 				this.handleMsg("stderr", "Code-Debug WARNING: Utility Command Server: Failed to start " + e.toString() + "\nCode-Debug WARNING: The examine memory location command won't work");
 		}
+
 	}
 
 	protected setValuesFormattingMode(mode: ValuesFormattingMode) {
@@ -637,6 +655,31 @@ export class MI2DebugSession extends DebugSession {
 			this.sendResponse(response);
 		}
 	}
+//czy TODO make RegisterValueArguments, etc.
+	protected async registersValuesRequest(response?: any, args?:any ): Promise<void> {
+
+		const regValues = await this.miDebugger.getRegistersValues();
+		// this.sendEvent({ event: "messagesByEvent", body: "Registers info gathered. Gonna send it with updateRegistersEvent. " } as DebugProtocol.Event);
+		this.sendEvent({ event: "updateRegistersValuesEvent", body: regValues } as DebugProtocol.Event );
+
+
+			// regs =>{
+			// 	response.body = {
+			// 		registers: regs
+			// 	};
+			// 	this.sendResponse(response);
+			// }
+
+		
+
+	}
+	protected async registersNamesRequest(response: DebugProtocol.Response, arg?: {}) {
+		const regNames = await this.miDebugger.getRegistersNames();
+		// this.sendEvent({ event: "messagesByEvent", body: "Registers info gathered. Gonna send it with updateRegistersEvent. " } as DebugProtocol.Event);
+		this.sendEvent({ event: "updateRegistersNamesEvent", body: regNames } as DebugProtocol.Event );
+
+	}
+
 
 	protected pauseRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
 		this.miDebugger.interrupt().then(done => {
@@ -769,6 +812,55 @@ export class MI2DebugSession extends DebugSession {
 			}
 		}
 	}
+
+	/*protected customRequest(command: string, response: DebugProtocol.Response, args: any, request?: DebugProtocol.Request): void {
+		console.log("I'm At Request Router\n\n\n\n\n\n\n\n\n");
+		if (command === "registersRequest"){
+			this.registersRequest(response,args);
+		}
+		else if (command === "envokeUpdateDebugWebviewEvent"){
+			console.log("GONNA SEND ENVOKE\n\n\n\n\n");
+			this.sendEvent( { event: "customEvent", body: ["testsRoot"] } as DebugProtocol.Event);
+		}
+	}*/
+
+
+	protected customRequest(command: string, response: DebugProtocol.Response, args: any): void {
+		console.log("IN DA");
+		switch (command) {
+			case "registersValuesRequest":
+				this.registersValuesRequest(response,{});
+				response.message="Register Values Request Received. Asking Debugger. updateRegistersValuesEvent comes later.";
+				this.sendResponse(response);
+				break;
+			case "registersNamesRequest":
+				this.registersNamesRequest(response,{});
+				response.message="Register Names Request Received. Asking Debugger. updateRegistersNamesEvent comes later.";
+				this.sendResponse(response);
+				break;
+			case "eventTest":
+				this.sendEvent( { event: "eventTest", body: ["test"] } as DebugProtocol.Event);
+				this.sendResponse(response);
+				break;
+			case "memValuesRequest":
+				this.miDebugger.examineMemory(args.from,args.length).then(
+					(data)=>{
+						this.sendEvent({ event: "memValues", body: {data:data,from:args.from,length:args.length} } as DebugProtocol.Event );
+					}
+				)
+
+				
+				this.sendResponse(response);
+			default:
+				return this.sendResponse(response);
+		}
+	}
+
+
+	public sendDebugSessionEvent(anything:any){
+		this.sendEvent(anything);
+	}
+
 
 }
 

@@ -1,4 +1,4 @@
-import { Breakpoint, IBackend, Thread, Stack, SSHArguments, Variable, VariableObject, MIError } from "../backend";
+import { Breakpoint, IBackend, Thread, Stack, SSHArguments, Variable, VariableObject, MIError, Register } from "../backend";
 import * as ChildProcess from "child_process";
 import { EventEmitter } from "events";
 import { parseMI, MINode } from '../mi_parse';
@@ -751,6 +751,48 @@ export class MI2 extends EventEmitter implements IBackend {
 		}
 		return ret;
 	}
+	async getRegistersNames():Promise<any> {
+		if (trace)
+			this.log("stderr", "getRegistersNames");
+
+		const result = await this.sendCommand(`data-list-register-names`); 
+
+		const names = result.result("register-names");
+	
+		return names;
+	}
+
+
+	async getRegistersValues():Promise<any[]> {
+		if (trace)
+			this.log("stderr", "getRegistersValues");
+		const result = await this.sendCommand(`data-list-register-values r \
+		0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20\
+		21 22 23 24 25 26 27 28 29 30 31 32\
+		`); 
+		//czy test 
+		//const result = new MINode(114514,[],{resultClass:"resultClass",results:[["string","any"]],});
+		const registers = result.result("register-values");
+		// console.log(registers);
+		const ret: Register[] = [];
+		/* viloent ugly way */
+		//ret.push({name:"all",valueStr:registers});
+		//vilonet way
+		return registers;
+		// elegant way
+		/*
+		for (const element of registers) {
+			const key = MINode.valueOf(element, "number");
+			const value = MINode.valueOf(element, "value");
+			ret.push({
+				name: key,
+				valueStr: value,
+			});
+		}
+		*/
+		
+		return ret;
+	}
 
 	examineMemory(from: number, length: number): Thenable<any> {
 		if (trace)
@@ -886,3 +928,4 @@ export class MI2 extends EventEmitter implements IBackend {
 	protected stream;
 	protected sshConn;
 }
+

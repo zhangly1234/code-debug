@@ -3,6 +3,16 @@ import * as net from "net";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { DebugSession } from "vscode-debugadapter";
+import { Session } from "inspector";
+import { DebugProtocol } from "vscode-debugprotocol";
+import { MI2DebugSession } from "../mibase"
+import { isNullOrUndefined } from "util";
+import { resolve } from "dns";
+import { resolveCliPathFromVSCodeExecutablePath } from "vscode-test";
+import { rejects } from "assert";
+import { Z_NO_COMPRESSION } from "zlib";
+import {riscvRegNames} from "./webview"
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("debugmemory", new MemoryContentProvider()));
@@ -25,6 +35,108 @@ export function activate(context: vscode.ExtensionContext) {
 		const ext = path.extname(fileName);
 		return fileName.substr(0, fileName.length - ext.length);
 	}));
+
+
+	let currentPanel: vscode.WebviewPanel | undefined = undefined;
+	let webviewMemState=[{from:0x80200000,length:16},{from:0x80201000,length:32}];
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('core-debugger.startPanel', () => {
+			// Create and show a new webview
+			currentPanel = vscode.window.createWebviewPanel(
+				'core-debugger', // Identifies the type of the webview. Used internally
+				'core-debugger', // Title of the panel displayed to the user
+				vscode.ViewColumn.Two, // Editor column to show the new webview panel in.
+				{
+					// Enable scripts in the webview
+					enableScripts: true
+				} // Webview options. More on these later.
+			);
+			// And set its HTML content
+			currentPanel.webview.html = getWebviewContent("loading reg names", "loading reg values");
+		})
+	);
+	let disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
+		createDebugAdapterTracker() {
+			return {
+				onWillStartSession: () => { console.log("session started") },
+				onDidSendMessage: (message) => {
+					console.log(message);
+					if (message.type === "event") {
+						if (message.event === "stopped") {
+							console.log("webview should update now. sending eventTest");
+							vscode.debug.activeDebugSession?.customRequest("eventTest");
+							console.log("evenTest sent. Requesting registersNamesRequest and registersValuesRequest. ")
+							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
+							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
+							console.log("registersNamesRequest and registersValuesRequest sent. events will come later.");
+							webviewMemState.forEach(element => {
+								vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
+							});
+							
+						}
+						else if (message.event === "eventTest") {
+							console.log("Extension Received eventTest");
+						}
+						else if (message.event === "updateRegistersValuesEvent") {
+							console.log("Extension Received updateRegistersValuesEvent");
+							currentPanel.webview.postMessage({ regValues: message.body});
+							// currentPanel.webview.html=getWebviewContent( "todo",JSON.stringify(message.body));
+							console.log(message.body);
+						}
+						else if (message.event === "updateRegistersNamesEvent") {
+							console.log("Extension Received updateRegistersNamesEvent");
+							currentPanel.webview.postMessage({ regNames: message.body });
+							console.log(message.body);
+						}
+						else if (message.event === "messagesByEvent") {
+							console.log("Extension Just Received a messagesByEvent");
+						}
+						else if (message.event === "memValues") {
+							console.log("Extension Just Received a memValues Event");
+							currentPanel.webview.postMessage({ memValues: message.body });
+							console.log(message.body);
+						}
+					}
+					//vscode.debug.activeDebugSession?.customRequest("envokeUpdateDebugWebviewEvent");},
+					//onWillReceiveMessage:(message) => {console.log(message);/*vscode.debug.activeDebugSession?.customRequest("envokeUpdateDebugWebviewEvent")*/}
+
+				}
+			}
+		}
+	});
+
+	currentPanel.webview.onDidReceiveMessage(
+        message => { //TODO check if other message?
+          webviewMemState=message;
+        },
+        undefined,
+        context.subscriptions
+      );
+
+
+	/* NOT WORKING
+		context.subscriptions.push(vscode.debug.onDidReceiveDebugSessionCustomEvent((customEvent) => {
+			/// czy TODO filters: if event ok then =>
+			/// not care about event. just to know something happened.
+			/// better way: 
+			/// currentPanel.webview.postMessage(getDebugPanelInfo(customEvent));
+			console.log("Extension Received Custom Command");
+	
+			if(customEvent.event==="eventTest"){
+	
+			// currentPanel.webview.html=getWebviewContent(getDebugPanelInfo());
+			
+	
+			// violent way: currentPanel.webview.html=getDebugPanelInfo(customEvent).toString();
+			}
+			else{
+				currentPanel.webview.html=getWebviewContent( JSON.stringify(customEvent.body));
+			}
+			
+		}));
+	*/
+
 }
 
 const memoryLocationRegex = /^0x[0-9a-f]+$/;
@@ -173,3 +285,118 @@ function center(str: string, width: number): string {
 	}
 	return str;
 }
+function getWebviewContent(regNames?: string, regValues?: string) {
+	return `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Cat Coding</title>
+	</head>
+	<body>
+	<div>
+	<table id="regTable" style="float: left;">
+
+	
+
+	</table>
+	<div>
+	<table id="memTable">
+
+	
+
+	</table>
+
+
+	<h2>privilege:</h2><h4 id="privilege">loading</h4>
+	<h2>pc:       </h2><h4 id="pc">loading</h4>
+	<h2>SBI:      </h2><h4 id="sbi">loading</h4>
+	</div>
+</div>
+</body>
+<script>
+
+	const riscvRegNames = ${riscvRegNames};
+	const vscode = acquireVsCodeApi();
+	function getMemRangeList(){
+
+		return [{from:0x80200000,length:16},{from:0x80201000,length:32}];
+	}
+	window.addEventListener('message', event => {
+		const message = event.data; // The JSON data our extension sent
+		if(message.regValues){
+			document.getElementById('regTable').innerHTML="";
+			let regs = message.regValues.flat().flat();
+			for(let i = 0;i<regs.length;i+=4){
+				document.getElementById('regTable').innerHTML+=     \`
+				<tbody>
+				<tr>
+					<td>\${riscvRegNames[  regs[i+1]  ] }</td>
+					<td>\${regs[i+3]}</td>
+				</tr>
+				</tbody>
+				\`;
+			}
+			let pc = regs[4*riscvRegNames.indexOf("pc")+3];
+			document.getElementById('pc').innerHTML=pc;
+			if(parseInt(pc)<parseInt(0x80200000)){ 
+				document.getElementById('sbi').innerHTML="yes";
+				//czy TODO not completely correct. There's small parts BEFORE SBI
+			}
+			else{
+				document.getElementById('sbi').innerHTML="no";
+			}
+		}
+		if(message.memValues){
+			let memValues = message.memValues;
+			// document.getElementById('memTable').innerHTML+=JSON.stringify(message.memValues)+"<br>";
+			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.data)+" "+JSON.stringify(memValues.from)+" "+JSON.stringify(memValues.length)+"<br>";
+
+
+
+			
+
+		}
+		if(message.memRangeQuery){
+			vscode.postMessage(getMemRangeList());
+		}
+	});
+    </script>
+
+	</html>`
+
+
+
+}
+
+
+
+function getDebugPanelInfo() {
+
+	let result = {
+		registers: [{ number: "unknown", value: "loading" }]
+	};
+	// vscode.debug.activeDebugSession?.customRequest("registersRequest");
+	/*
+	.then(
+		response=>{
+			if (response && response.success) {
+				console.log("response success. Registers are:");
+				console.log(JSON.stringify(response.body.registers));
+
+				result['registers']= response.body.registers;
+
+			} else {
+				console.log("response not success! ");
+			}
+		},
+		rejects=>{
+			console.log(rejects);
+		}
+	);
+	*/
+
+
+	//return JSON.stringify(result.registers);
+}
+
