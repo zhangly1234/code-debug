@@ -36,9 +36,12 @@ export function activate(context: vscode.ExtensionContext) {
 		return fileName.substr(0, fileName.length - ext.length);
 	}));
 
-
+//=========================================================================================
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
 	let webviewMemState=[{from:0x80200000,length:16},{from:0x80201000,length:32}];
+	let inKernel:boolean = true;
+//========================================================================================
+
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('core-debugger.startPanel', () => {
@@ -61,41 +64,56 @@ export function activate(context: vscode.ExtensionContext) {
 			return {
 				onWillStartSession: () => { console.log("session started") },
 				onDidSendMessage: (message) => {
-					console.log(message);
+					
+					try{
+					if(message.body.reason==="breakpoint"){
+						console.log("got breakpoint:");
+						console.log(message);
+						if(inKernel===true){
+							inKernel=false;
+						}
+						else{
+							inKernel=true;
+						}
+					}
+					}catch(e){
+
+					}
 					if (message.type === "event") {
 						if (message.event === "stopped") {
-							console.log("webview should update now. sending eventTest");
+							//console.log("webview should update now. sending eventTest");
 							vscode.debug.activeDebugSession?.customRequest("eventTest");
-							console.log("evenTest sent. Requesting registersNamesRequest and registersValuesRequest. ")
+							//console.log("evenTest sent. Requesting registersNamesRequest and registersValuesRequest. ")
 							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
 							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
-							console.log("registersNamesRequest and registersValuesRequest sent. events will come later.");
+							//console.log("registersNamesRequest and registersValuesRequest sent. events will come later.");
 							webviewMemState.forEach(element => {
 								vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
 							});
+							currentPanel.webview.postMessage({ inKernel: inKernel});
 							
 						}
 						else if (message.event === "eventTest") {
-							console.log("Extension Received eventTest");
+							//console.log("Extension Received eventTest");
 						}
 						else if (message.event === "updateRegistersValuesEvent") {
-							console.log("Extension Received updateRegistersValuesEvent");
+							//console.log("Extension Received updateRegistersValuesEvent");
 							currentPanel.webview.postMessage({ regValues: message.body});
 							// currentPanel.webview.html=getWebviewContent( "todo",JSON.stringify(message.body));
-							console.log(message.body);
+							//console.log(message.body);
 						}
 						else if (message.event === "updateRegistersNamesEvent") {
-							console.log("Extension Received updateRegistersNamesEvent");
+							//console.log("Extension Received updateRegistersNamesEvent");
 							currentPanel.webview.postMessage({ regNames: message.body });
-							console.log(message.body);
+							//console.log(message.body);
 						}
 						else if (message.event === "messagesByEvent") {
-							console.log("Extension Just Received a messagesByEvent");
+							//console.log("Extension Just Received a messagesByEvent");
 						}
 						else if (message.event === "memValues") {
-							console.log("Extension Just Received a memValues Event");
+							//console.log("Extension Just Received a memValues Event");
 							currentPanel.webview.postMessage({ memValues: message.body });
-							console.log(message.body);
+							//console.log(message.body);
 						}
 					}
 					//vscode.debug.activeDebugSession?.customRequest("envokeUpdateDebugWebviewEvent");},
@@ -107,7 +125,15 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	currentPanel.webview.onDidReceiveMessage(
-        message => { //TODO check if other message?
+        message => {
+
+		/* TODO
+			switch (message.command) {
+            case 'alert':
+              vscode.window.showErrorMessage(message.text);
+              return;
+          }*/
+
           webviewMemState=message;
         },
         undefined,
@@ -306,12 +332,10 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	
 
 	</table>
-	<button onclick="memRangeQuery()">Update Memory Info</button>
 
-
-	<h2>privilege:</h2><h4 id="privilege">loading</h4>
 	<h2>pc:       </h2><h4 id="pc">loading</h4>
-	<h2>SBI:      </h2><h4 id="sbi">loading</h4>
+	<h2>inSBI:    </h2><h4 id="sbi">loading</h4>
+	<h2>inKernel: </h2><h4 id="inKernel">loading</h4>
 	</div>
 </div>
 </body>
@@ -330,7 +354,12 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 		const message = event.data; // The JSON data our extension sent
 		if(message.regValues){
 			document.getElementById('regTable').innerHTML="";
-				document.getElementById('regTable').innerHTML+=JSON.stringify(message.regValues);
+			document.getElementById('regTable').innerHTML+=JSON.stringify(message.regValues);
+			try{
+			document.getElementById('pc').innerHTML=message.regValues[32][1][1];
+			document.getElementById('sbi').innerHTML=message.regValues[32][1][1]<0x80200000;
+			
+			}catch(e){}
 		}
 		if(message.memValues){
 			let memValues = message.memValues;
@@ -339,6 +368,9 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.from)+" ";
 			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.length)+" <br>";
 			
+		}
+		if(message.inKernel){
+			document.getElementById('inKernel').innerHTML=JSON.stringify(message.inKernel);
 		}
 	});
     </script>
