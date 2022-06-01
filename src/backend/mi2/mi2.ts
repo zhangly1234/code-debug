@@ -7,6 +7,7 @@ import * as net from "net";
 import * as fs from "fs";
 import * as path from "path";
 import { Client } from "ssh2";
+import {riscvRegNames} from "../../frontend/webview"
 
 export function escape(str: string) {
 	return str.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
@@ -625,7 +626,7 @@ export class MI2 extends EventEmitter implements IBackend {
 			}, reject);
 		});
 	}
-
+	//czy try
 	removeBreakPoint(breakpoint: Breakpoint): Thenable<boolean> {
 		if (trace)
 			this.log("stderr", "removeBreakPoint");
@@ -768,8 +769,32 @@ export class MI2 extends EventEmitter implements IBackend {
 			this.log("stderr", "getRegistersValues");
 		const result = await this.sendCommand(`data-list-register-values r \
 		0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20\
-		21 22 23 24 25 26 27 28 29 30 31 32\
-		`); 
+		21 22 23 24 25 26 27 28 29 30 31 32`);
+		/* ${riscvRegNames.indexOf("uscratch")} \
+		${riscvRegNames.indexOf("uepc")} \
+		${riscvRegNames.indexOf("ucause")} \
+		${riscvRegNames.indexOf("utval")} \
+		${riscvRegNames.indexOf("uip")} \
+		${riscvRegNames.indexOf("sstatus")} \
+		${riscvRegNames.indexOf("sedeleg")} \
+		${riscvRegNames.indexOf("sideleg")} \
+		${riscvRegNames.indexOf("sie")} \
+		${riscvRegNames.indexOf("stvec")} \
+		${riscvRegNames.indexOf("scounteren")} \
+		${riscvRegNames.indexOf("sscratch")} \
+		${riscvRegNames.indexOf("sepc")} \
+		${riscvRegNames.indexOf("scause")} \
+		${riscvRegNames.indexOf("stval")} \
+		${riscvRegNames.indexOf("sip")} \
+		${riscvRegNames.indexOf("satp")} \
+		${riscvRegNames.indexOf("mstatus")} \
+		${riscvRegNames.indexOf("misa")} \
+		${riscvRegNames.indexOf("medeleg")} \
+		${riscvRegNames.indexOf("mideleg")} \
+		${riscvRegNames.indexOf("mie")} \
+		${riscvRegNames.indexOf("mtvec")} \
+		${riscvRegNames.indexOf("mcounteren")} \ */
+		
 		//czy test 
 		//const result = new MINode(114514,[],{resultClass:"resultClass",results:[["string","any"]],});
 		const registers = result.result("register-values");
@@ -859,7 +884,7 @@ export class MI2 extends EventEmitter implements IBackend {
 	log(type: string, msg: string) {
 		this.emit("msg", type, msg[msg.length - 1] == '\n' ? msg : (msg + "\n"));
 	}
-
+	//czy try this
 	sendUserInput(command: string, threadId: number = 0, frameLevel: number = 0): Thenable<MINode> {
 		if (command.startsWith("-")) {
 			return this.sendCommand(command.substr(1));

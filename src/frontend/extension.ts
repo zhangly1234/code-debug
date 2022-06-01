@@ -80,16 +80,16 @@ export function activate(context: vscode.ExtensionContext) {
 
 					}
 					if (message.type === "event") {
-						if (message.event === "stopped") {
+						if (message.event === "stopped") {//czy move this section to mi2.ts later
 							//console.log("webview should update now. sending eventTest");
 							vscode.debug.activeDebugSession?.customRequest("eventTest");
 							//console.log("evenTest sent. Requesting registersNamesRequest and registersValuesRequest. ")
 							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
 							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
 							//console.log("registersNamesRequest and registersValuesRequest sent. events will come later.");
-							webviewMemState.forEach(element => {
+							/*webviewMemState.forEach(element => {
 								vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
-							});
+							});*/
 							currentPanel.webview.postMessage({ inKernel: inKernel});
 							
 						}
