@@ -37,14 +37,7 @@
 5. 按continue按钮开始运行rCore-Tutorial
 6. 当运行到位于内核出口的断点时，插件会自动删除已有断点，此时用户可以设置用户态程序的断点
 7. 在用户态程序中如果想观察内核内的执行流，应先清除所有断电，设置内核入口、出口断点
-视频演示：
-<!-- blank line -->
-<figure class="video_container">
-  <video controls="true" allowfullscreen="true">
-    <source src="./docs/imgs/pre.mp4" type="video/mp4">
-  </video>
-</figure>
-<!-- blank line -->
+[视频演示](./docs/imgs/pre.mp4)
 
 ## Debugger插件设计
 
