@@ -22,10 +22,10 @@ class ExtendedVariable {
 }
 
 class VariableScope {
-	constructor (public readonly name: string, public readonly threadId: number, public readonly level: number) {
+	constructor(public readonly name: string, public readonly threadId: number, public readonly level: number) {
 	}
 
-	public static variableName (handle: number, name: string): string {
+	public static variableName(handle: number, name: string): string {
 		return `var_${handle}_${name}`;
 	}
 }
@@ -42,13 +42,13 @@ export class MI2DebugSession extends DebugSession {
 	protected initialRunCommand: RunCommand;
 	protected stopAtEntry: boolean | string;
 	protected isSSH: boolean;
-	protected sourceFileMap: Map<string,string>;
+	protected sourceFileMap: Map<string, string>;
 	protected started: boolean;
 	protected crashed: boolean;
 	protected miDebugger: MI2;
 	protected commandServer: net.Server;
 	protected serverPath: string;
-	protected running :boolean=false;
+	protected running: boolean = false;
 
 	public constructor(debuggerLinesStartAt1: boolean, isServer: boolean = false) {
 		super(debuggerLinesStartAt1, isServer);
@@ -139,6 +139,16 @@ export class MI2DebugSession extends DebugSession {
 		const event = new StoppedEvent("breakpoint", parseInt(info.record("thread-id")));
 		(event as DebugProtocol.StoppedEvent).body.allThreadsStopped = info.record("stopped-threads") == "all";
 		this.sendEvent(event);
+		this.sendEvent({ event: "info", body: info } as DebugProtocol.Event);
+		if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" && info.outOfBandRecord[0].output[3][1][5][1] === '135') {
+			this.sendEvent({ event: "inUser" } as DebugProtocol.Event);
+		}
+		else if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" &&
+			info.outOfBandRecord[0].output[3][1][5][1] === '65') {
+			this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
+		}
+
+
 	}
 
 	protected handleBreak(info?: MINode) {
@@ -289,17 +299,17 @@ export class MI2DebugSession extends DebugSession {
 			return;
 		}
 		this.miDebugger.getThreads().then(threads => {
-				response.body = {
-					threads: []
-				};
-				for (const thread of threads) {
-					let threadName = thread.name || thread.targetId || "<unnamed>";
-					response.body.threads.push(new Thread(thread.id, thread.id + ":" + threadName));
-				}
-				this.sendResponse(response);
-			}).catch(error => {
-				this.sendErrorResponse(response, 17, `Could not get threads: ${error}`);
-			});
+			response.body = {
+				threads: []
+			};
+			for (const thread of threads) {
+				let threadName = thread.name || thread.targetId || "<unnamed>";
+				response.body.threads.push(new Thread(thread.id, thread.id + ":" + threadName));
+			}
+			this.sendResponse(response);
+		}).catch(error => {
+			this.sendErrorResponse(response, 17, `Could not get threads: ${error}`);
+		});
 	}
 
 	// Supports 65535 threads.
@@ -428,7 +438,7 @@ export class MI2DebugSession extends DebugSession {
 		const createScope = (scopeName: string, expensive: boolean): Scope => {
 			const key: string = scopeName + ":" + threadId + ":" + level;
 			let handle: number;
-			
+
 			if (this.scopeHandlesReverse.hasOwnProperty(key)) {
 				handle = this.scopeHandlesReverse[key];
 			} else {
@@ -655,28 +665,28 @@ export class MI2DebugSession extends DebugSession {
 			this.sendResponse(response);
 		}
 	}
-//czy TODO make RegisterValueArguments, etc.
-	protected async registersValuesRequest(response?: any, args?:any ): Promise<void> {
+	//czy TODO make RegisterValueArguments, etc.
+	protected async registersValuesRequest(response?: any, args?: any): Promise<void> {
 
 		const regValues = await this.miDebugger.getRegistersValues();
 		// this.sendEvent({ event: "messagesByEvent", body: "Registers info gathered. Gonna send it with updateRegistersEvent. " } as DebugProtocol.Event);
-		this.sendEvent({ event: "updateRegistersValuesEvent", body: regValues } as DebugProtocol.Event );
+		this.sendEvent({ event: "updateRegistersValuesEvent", body: regValues } as DebugProtocol.Event);
 
 
-			// regs =>{
-			// 	response.body = {
-			// 		registers: regs
-			// 	};
-			// 	this.sendResponse(response);
-			// }
+		// regs =>{
+		// 	response.body = {
+		// 		registers: regs
+		// 	};
+		// 	this.sendResponse(response);
+		// }
 
-		
+
 
 	}
 	protected async registersNamesRequest(response: DebugProtocol.Response, arg?: {}) {
 		const regNames = await this.miDebugger.getRegistersNames();
 		// this.sendEvent({ event: "messagesByEvent", body: "Registers info gathered. Gonna send it with updateRegistersEvent. " } as DebugProtocol.Event);
-		this.sendEvent({ event: "updateRegistersNamesEvent", body: regNames } as DebugProtocol.Event );
+		this.sendEvent({ event: "updateRegistersNamesEvent", body: regNames } as DebugProtocol.Event);
 
 	}
 
@@ -775,7 +785,7 @@ export class MI2DebugSession extends DebugSession {
 					id: 1,
 					label: args.source.name,
 					column: args.column,
-					line : args.line
+					line: args.line
 				}]
 			};
 			this.sendResponse(response);
@@ -788,7 +798,7 @@ export class MI2DebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	private addSourceFileMapEntry(gdbCWD :string, ideCWD : string): void {
+	private addSourceFileMapEntry(gdbCWD: string, ideCWD: string): void {
 		// if it looks like a Win32 path convert to "/"-style for comparisions and to all-lower-case
 		if (ideCWD.indexOf("\\") != -1)
 			ideCWD = ideCWD.replace(/\\/g, "/").toLowerCase();
@@ -802,7 +812,7 @@ export class MI2DebugSession extends DebugSession {
 		this.sourceFileMap.set(ideCWD, gdbCWD);
 	}
 
-	protected setSourceFileMap(configMap: { [index: string]: string }, fallbackGDB :string, fallbackIDE : string): void {
+	protected setSourceFileMap(configMap: { [index: string]: string }, fallbackGDB: string, fallbackIDE: string): void {
 		this.sourceFileMap = new Map<string, string>();
 		if (configMap === undefined) {
 			this.addSourceFileMapEntry(fallbackGDB, fallbackIDE);
@@ -829,35 +839,51 @@ export class MI2DebugSession extends DebugSession {
 		console.log("IN DA");
 		switch (command) {
 			case "registersValuesRequest":
-				this.registersValuesRequest(response,{});
-				response.message="Register Values Request Received. Asking Debugger. updateRegistersValuesEvent comes later.";
+				this.registersValuesRequest(response, {});
+				response.message = "Register Values Request Received. Asking Debugger. updateRegistersValuesEvent comes later.";
 				this.sendResponse(response);
 				break;
 			case "registersNamesRequest":
-				this.registersNamesRequest(response,{});
-				response.message="Register Names Request Received. Asking Debugger. updateRegistersNamesEvent comes later.";
+				this.registersNamesRequest(response, {});
+				response.message = "Register Names Request Received. Asking Debugger. updateRegistersNamesEvent comes later.";
 				this.sendResponse(response);
 				break;
 			case "eventTest":
-				this.sendEvent( { event: "eventTest", body: ["test"] } as DebugProtocol.Event);
+				this.sendEvent({ event: "eventTest", body: ["test"] } as DebugProtocol.Event);
 				this.sendResponse(response);
 				break;
 			case "memValuesRequest":
-				this.miDebugger.examineMemory(args.from,args.length).then(
-					(data)=>{
-						this.sendEvent({ event: "memValues", body: {data:data,from:args.from,length:args.length} } as DebugProtocol.Event );
+				this.miDebugger.examineMemory(args.from, args.length).then(
+					(data) => {
+						this.sendEvent({ event: "memValues", body: { data: data, from: args.from, length: args.length } } as DebugProtocol.Event);
 					}
 				)
-
-				
 				this.sendResponse(response);
+				break;
+			case "addDebugFile":
+				this.miDebugger.sendCliCommand("add-symbol-file "+args.debugFilepath);
+				break;
+			case "addDebugFile":
+				this.miDebugger.sendCliCommand("remove-symbol-file "+args.debugFilepath);
+				break;
+			
+			// bad practice, breakpoints are hidden. TODO replace with vscode.debug.addBreakpoints later.
+			case "setKernelInOutBreakpoints"://remove previous breakpoints in this source
+				this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/trap/mod.rs"} as DebugProtocol.Source,breakpoints:[{line:135},{line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
+				break;
+			case "setKernelOutBreakpoints"://out only
+				break;
+			case "removeAllCliBreakpoints":
+			case "nuke":
+				this.miDebugger.sendCliCommand("del");
+				break;
 			default:
 				return this.sendResponse(response);
 		}
 	}
 
 
-	public sendDebugSessionEvent(anything:any){
+	public sendDebugSessionEvent(anything: any) {
 		this.sendEvent(anything);
 	}
 

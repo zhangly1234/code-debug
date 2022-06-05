@@ -12,9 +12,16 @@ import { resolve } from "dns";
 import { resolveCliPathFromVSCodeExecutablePath } from "vscode-test";
 import { rejects } from "assert";
 import { Z_NO_COMPRESSION } from "zlib";
-import {riscvRegNames} from "./webview"
+import { riscvRegNames } from "./webview"
 
 export function activate(context: vscode.ExtensionContext) {
+	let NEXT_TERM_ID = 1;
+	context.subscriptions.push(vscode.commands.registerCommand('core-debugger.launchCoreDebugger', () => {
+		vscode.commands.executeCommand("core-debugger.startPanel");
+		const terminal = vscode.window.createTerminal(`CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`);
+		terminal.sendText("cd && make run");
+		vscode.commands.executeCommand("workbench.action.debug.start");
+	}));
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("debugmemory", new MemoryContentProvider()));
 	context.subscriptions.push(vscode.commands.registerCommand("code-debug.examineMemoryLocation", examineMemory));
 	context.subscriptions.push(vscode.commands.registerCommand("code-debug.getFileNameNoExt", () => {
@@ -36,11 +43,11 @@ export function activate(context: vscode.ExtensionContext) {
 		return fileName.substr(0, fileName.length - ext.length);
 	}));
 
-//=========================================================================================
+	//=========================================================================================
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
-	let webviewMemState=[{from:0x80200000,length:16},{from:0x80201000,length:32}];
-	let inKernel:boolean = true;
-//========================================================================================
+	let webviewMemState = [{ from: 0x80200000, length: 16 }, { from: 0x80201000, length: 32 }];
+	let kernelInOutBreakpointArgs=1;
+	//========================================================================================
 
 
 	context.subscriptions.push(
@@ -57,28 +64,40 @@ export function activate(context: vscode.ExtensionContext) {
 			);
 			// And set its HTML content
 			currentPanel.webview.html = getWebviewContent("loading reg names", "loading reg values");
+			currentPanel.webview.onDidReceiveMessage(
+				message => {
+					// vscode.window.showErrorMessage("message");
+					if (message.memRangeQuery) {
+						webviewMemState = message.memRangeQuery;
+					}
+					if (message.removeDebugFile) {
+						//TODO save current breakpoints
+						//TODO support multiple debug files of user programs
+						vscode.debug.activeDebugSession?.customRequest("removeDebugFile", { debugFilepath: os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/initproc" });
+						vscode.window.showInformationMessage("symbol file `initproc` removed");
+					}
+					if(message.setKernelInOutBreakpoints){
+						vscode.debug.activeDebugSession?.customRequest("setKernelInOutBreakpoints");
+						vscode.window.showInformationMessage("Kernel In Out Breakpoints Set")
+					}
+					if(message.removeAllCliBreakpoints){
+						removeAllCliBreakpoints();
+						vscode.window.showInformationMessage("All breakpoints including hidden ones are removed.");
+					}
+				},
+				undefined,
+				context.subscriptions
+			);
 		})
 	);
+
 	let disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
 		createDebugAdapterTracker() {
 			return {
 				onWillStartSession: () => { console.log("session started") },
 				onDidSendMessage: (message) => {
-					
-					try{
-					if(message.body.reason==="breakpoint"){
-						console.log("got breakpoint:");
-						console.log(message);
-						if(inKernel===true){
-							inKernel=false;
-						}
-						else{
-							inKernel=true;
-						}
-					}
-					}catch(e){
 
-					}
+
 					if (message.type === "event") {
 						if (message.event === "stopped") {//czy move this section to mi2.ts later
 							//console.log("webview should update now. sending eventTest");
@@ -87,18 +106,17 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
 							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
 							//console.log("registersNamesRequest and registersValuesRequest sent. events will come later.");
-							/*webviewMemState.forEach(element => {
+							webviewMemState.forEach(element => {
 								vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
-							});*/
-							currentPanel.webview.postMessage({ inKernel: inKernel});
-							
+							});
+
 						}
 						else if (message.event === "eventTest") {
 							//console.log("Extension Received eventTest");
 						}
 						else if (message.event === "updateRegistersValuesEvent") {
 							//console.log("Extension Received updateRegistersValuesEvent");
-							currentPanel.webview.postMessage({ regValues: message.body});
+							currentPanel.webview.postMessage({ regValues: message.body });
 							// currentPanel.webview.html=getWebviewContent( "todo",JSON.stringify(message.body));
 							//console.log(message.body);
 						}
@@ -115,6 +133,24 @@ export function activate(context: vscode.ExtensionContext) {
 							currentPanel.webview.postMessage({ memValues: message.body });
 							//console.log(message.body);
 						}
+						else if (message.event === "inUser") {
+							//TODO save current breakpoints and webviewMemState
+							webviewMemState = [];
+							removeAllCliBreakpoints();
+							//czy TODO support many debug files 
+							vscode.debug.activeDebugSession?.customRequest("addDebugFile", { debugFilepath: os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/initproc" });
+							currentPanel.webview.postMessage({ inUser: true });
+							vscode.window.showInformationMessage("All breakpoints removed. Symbol file `initproc`added. Now you can set breakpoints in initproc.rs (line 13 println!(\"aaaaa recommemded)");
+							console.log("/////////////////////////INUSER///////////////////");
+						}
+						else if (message.event === "inKernel") {
+							currentPanel.webview.postMessage({ inKernel: true });
+							console.log("/////////////////////////INKERNEL///////////////////");
+						}
+						else if (message.event === "info") {
+							console.log("//////////////INFO///////////");
+							console.log(message.body);
+						}
 					}
 					//vscode.debug.activeDebugSession?.customRequest("envokeUpdateDebugWebviewEvent");},
 					//onWillReceiveMessage:(message) => {console.log(message);/*vscode.debug.activeDebugSession?.customRequest("envokeUpdateDebugWebviewEvent")*/}
@@ -124,21 +160,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	currentPanel.webview.onDidReceiveMessage(
-        message => {
 
-		/* TODO
-			switch (message.command) {
-            case 'alert':
-              vscode.window.showErrorMessage(message.text);
-              return;
-          }*/
-
-          webviewMemState=message;
-        },
-        undefined,
-        context.subscriptions
-      );
 
 
 	/* NOT WORKING
@@ -317,10 +339,13 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Cat Coding</title>
+		<title>CoreDebugger</title>
 	</head>
 	<body>
 	<div>
+	<button type="button" onclick="removeDebugFile()">remove Debug File (initproc only for now)</button><br>
+	<button type="button" onclick="setKernelInOutBreakpoints()">set kernel in/out breakpoints</button><br>
+	<button type="button" onclick="removeAllCliBreakpoints()">removeAllCliBreakpoints</button><br>
 	<table id="regTable" style="float: left;">
 
 	
@@ -334,8 +359,9 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	</table>
 
 	<h2>pc:       </h2><h4 id="pc">loading</h4>
-	<h2>inSBI:    </h2><h4 id="sbi">loading</h4>
-	<h2>inKernel: </h2><h4 id="inKernel">loading</h4>
+	<h2>Privilege: </h2><h4 id="privilege">loading</h4>
+	<h4>if in out breakpoints hit, privilege changed.</h4>
+	<h4>in out breakpoints configuration:</h4>
 	</div>
 </div>
 </body>
@@ -348,7 +374,16 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 		return [{from:0x80200000,length:16},{from:0x80201000,length:32}];
 	}
 	function memRangeQuery(){
-		vscode.postMessage(getMemRangeList());
+		vscode.postMessage({memRangeQuery:getMemRangeList()});
+	}
+	function removeDebugFile(){
+		vscode.postMessage({removeDebugFile:true});
+	}
+	function setKernelInOutBreakpoints(){
+		vscode.postMessage({setKernelInOutBreakpoints:true});
+	}
+	function removeAllCliBreakpoints(){
+		vscode.postMessage({removeAllCliBreakpoints:true});
 	}
 	window.addEventListener('message', event => {
 		const message = event.data; // The JSON data our extension sent
@@ -357,8 +392,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			document.getElementById('regTable').innerHTML+=JSON.stringify(message.regValues);
 			try{
 			document.getElementById('pc').innerHTML=message.regValues[32][1][1];
-			document.getElementById('sbi').innerHTML=message.regValues[32][1][1]<0x80200000;
-			
 			}catch(e){}
 		}
 		if(message.memValues){
@@ -369,8 +402,11 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.length)+" <br>";
 			
 		}
+		if(message.inUser){
+			document.getElementById('privilege').innerHTML='U';
+		}
 		if(message.inKernel){
-			document.getElementById('inKernel').innerHTML=JSON.stringify(message.inKernel);
+			document.getElementById('privilege').innerHTML='S';
 		}
 	});
     </script>
@@ -381,7 +417,11 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 
 }
 
-
+// send del to terminal
+function removeAllCliBreakpoints(){ 
+	vscode.commands.executeCommand("workbench.debug.viewlet.action.removeAllBreakpoints");
+	vscode.debug.activeDebugSession?.customRequest("removeAllCliBreakpoints");
+}
 
 function getDebugPanelInfo() {
 

@@ -23,6 +23,7 @@
 		"onCommand:code-debug.getFileBasenameNoExt",
 		"onCommand:core-debugger.startPanel",
 		"onCommand:core-debugger.updatePanel",
+		"onCommand:core-debugger.launchCoreDebugger",
 		"onDebug"
 	],
 	"categories": [
@@ -42,6 +43,11 @@
 			{
 				"command": "code-debug.examineMemoryLocation",
 				"title": "Code-Debug: Examine memory location"
+			},
+			{
+				"command": "core-debugger.launchCoreDebugger",
+				"title": "launch  CoreDebugger",
+				"category": "CoreDebugger"
 			},
 			{
 				"command": "core-debugger.startPanel",

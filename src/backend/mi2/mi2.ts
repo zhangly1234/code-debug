@@ -367,7 +367,9 @@ export class MI2 extends EventEmitter implements IBackend {
 											this.log("stderr", "stop: " + reason);
 										switch (reason) {
 										case "breakpoint-hit":
+											//=>MIDebugger
 											this.emit("breakpoint", parsed);
+											this.log("PARSED RAW MI INFO",JSON.stringify(parsed));
 											break;
 										case "watchpoint-trigger":
 										case "read-watchpoint-trigger":
