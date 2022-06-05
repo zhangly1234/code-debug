@@ -1,202 +1,111 @@
-# Debug
+# proj158-rust-debugger
 
-Native VSCode debugger. Supports both GDB and LLDB.
+导师：
+成员：
 
-## Installation
+## 概述
 
-Press ctrl-p (cmd+p on OS X) and run `ext install webfreak.debug` in visual studio code and install GDB/LLDB. See `Usage` for details on how to set it up.
+### 项目背景及意义
 
-![Preview](images/preview.png)
+方便的源代码级调试工具，对监测程序运行状态和理解程序的逻辑十分重要；高效的Rust语言跟踪能力，是Rust操作系统内核开发的必要工具，对基于Rust的操作系统教学和实验很有帮助。然而现有RISC-V、Rust实验环境搭建成本高，上手难度大，不利于学习与开发工作。本项目拟实现一种基于网页访问的在线实验系统，提供方便、高效的手段实现在QEMU和RISC-V开发板上的Rust教学操作系统的源代码调试。
 
-## Usage
+### 项目的主要工作
 
-![Image with red circle around a gear and a red arrow pointing at GDB and LLDB](images/tutorial1.png)
+1. 在VSCode编辑器的已有debugger插件基础上，扩展对Rust语言和操作系统内核特征的源代码级跟踪分析能力。主要包括：
+    - 关键的寄存器和内存的数据获取；
+    - 当前特树级信息的准确获取；
+    - 函数调用栈跟踪；
+    - 一个例子：在USM三态修改符号表，并获取内存单元信息；
+    - 对被跟踪内核运行环境的适配：QEMU
 
-Or if you already have an existing debugger in your project setup you can click "Create Configuration" or use the auto completion instead:
+2. 通过docker容器提供在线版本vscode、rust工具链以及qemu-system-riscv64等调试rCore-Tutorial-v3所需要的工具，使用户可通过网页远程调用云端qemu/RISC-V开发板的gdb调试器进行代码跟踪与调试。该部分已基本完成，见docker文件夹。待debugger插件功能稳定后上传docker hub。
 
-![Visual studio code debugger launch.json auto completion showing alternative way to create debuggers](images/tutorial1-alt.png)
+## 安装
 
-Open your project and click the debug button in your sidebar. At the top right press
-the little gear icon and select GDB or LLDB. It will automatically generate the configuration
-you need.
+1. 获取risc-v工具链
+在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本），
+或者试试直接访问
+[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下。
 
-*Note: for LLDB you need to have `lldb-mi` in your PATH*
+1. 修改rCore-Tutorial-v3的源码和编译参数：[见此](./docs/rCore-mod.md)
 
-If you are on OS X you can add `lldb-mi` to your path using
-`ln -s /Applications/Xcode.app/Contents/Developer/usr/bin/lldb-mi /usr/local/bin/lldb-mi` if you have Xcode.
+1. 创建launch.json（可根据自己需要修改）: [见此](./docs/launchjson.md)
 
-![Default config with a red circle around the target](images/tutorial2.png)
+## 使用
 
-Now you need to change `target` to the application you want to debug relative
-to the cwd. (Which is the workspace root by default)
+1. 打开rCore-Tutorial-v3的目录
+2. `ctrl+shift+p` ，执行命令`core-debugger.launchCoreDebugger`
+3. 清除所有断点
+4. 设置内核入口、出口断点
+5. 按continue按钮开始运行rCore-Tutorial
+6. 当运行到位于内核出口的断点时，插件会自动删除已有断点，此时用户可以设置用户态程序的断点
+7. 在用户态程序中如果想观察内核内的执行流，应先清除所有断电，设置内核入口、出口断点
+视频演示：
 
-Additionally you can set `terminal` if you want to run the program in a separate terminal with
-support for input. On Windows set it to an empty string (`""`) to enable this feature. On linux
-set it to an empty string (`""`) to use the default terminal emulator specified with `x-terminal-emulator`
-or specify a custom one. Note that it must support the `-e` argument.
+## Debugger插件设计
 
-Before debugging you need to compile your application first, then you can run it using
-the green start button in the debug sidebar. For this you could use the `preLaunchTask`
-argument vscode allows you to do. Debugging multithreaded applications is currently not
-implemented. Adding breakpoints while the program runs will not interrupt it immediately.
-For that you need to pause & resume the program once first. However adding breakpoints
-while its paused works as expected.
+### 整体架构设计
 
-Extending variables is very limited as it does not support child values of variables.
-Watching expressions works partially but the result does not get properly parsed and
-it shows the raw output of the command. It will run `data-evaluate-expression`
-to check for variables.
+![Debugger插件整体架构设计](./docs/imgs/arch.png)
 
-While running you will get a console where you can manually type GDB/LLDB commands or MI
-commands prepended with a hyphen `-`. The console shows all output separated
-in `stdout` for the application, `stderr` for errors and `log` for log messages.
+### 子模块设计
 
-Some exceptions/signals like segmentation faults will be catched and displayed but
-it does not support for example most D exceptions.
+#### GDB/MI Interface
 
-Support exists for stopping at the entry point of the application.  This is controlled
-through the `stopAtEntry` setting.  This value may be either a boolean or a string.  In
-the case of a boolean value of `false` (the default), this setting is disabled.  In the
-case of a boolean value of `true`, if this is a launch configuration and the debugger
-supports the `start` (or `exec-run --start` MI feature, more specifically), than this
-will be used to run to the entry point of the application.  Note that this appears to
-work fine for GDB, but LLDB doesn't necessarily seem to adhere to this, even though it may
-indicate that it supports this feature.  The alternative configuration option for the
-`stopAtEntry` setting is to specify a string where the string represents the entry point
-itself.  In this situation a temporary breakpoint will be set at the specified entry point
-and a normal run will occur for a launch configuration.  This (setting a temporary
-breakpoint) is also the behavior that occurs when the debugger does not support the
-`start` feature and the `stopAtEntry` was set to `true`.  In that case the entry point will
-default to "main".  Thus, the most portable way to use this configuration is to explicitly
-specify the entry point of the application.  In the case of an attach configuration, similar
-behavior will occur, however since there is no equivalent of the `start` command for
-attaching, a boolean value of `true` for the `stopAtEntry` setting in a launch configuration
-will automatically default to an entry point of "main", while a string value for this
-setting will be interpreted as the entry point, causing a temporary breakpoint to be set at
-that location prior to continuing execution.  Note that stopping at the entry point for the
-attach configuration assumes that the entry point has not yet been entered at the time of
-attach, otherwise this will have no affect.
+GDB/MI是GDB面向机器的、基于行的文本接口。它用于支持将调试器作为Debugger插件的一个小模块来使用的系统开发。本项目通过`MIDebugger.sendCliCommand()`方法将用户请求（Debug Adapter Requests）转换为符合GDB/MI接口规范的文本并发送给GDB进程。
 
-### Attaching to existing processes
+#### Debug Adapter
 
-Attaching to existing processes currently only works by specifying the PID in the
-`launch.json` and setting `request` to `"attach"`. You also need to specify the executable
-path for the debugger to find the debug symbols.
+下图展示了Debugger插件的消息传递流程
+![Debug Adapter](./docs/imgs/DebugAdapter.png)
+该流程遵守Debug Adapter 协议。该协议主要规定了一下三类消息的结构和处理流程：
 
-```
-"request": "attach",
-"executable": "./bin/executable",
-"target": "4285"
-```
+- Requests：各类消息请求的格式。本项目通过其中的CustomRequests扩展了一些操作系统调试相关的请求。
+- Response：对于Requests的回应。
+- Events：Debug Adapter事件。本项目新增的异步请求通过Events返回数据。
 
-This will attach to PID 4285 which should already run. GDB will pause the program on entering and LLDB will keep it running.
 
-### Using `gdbserver` for remote debugging (GDB only)
+#### WebView
 
-You can also connect to a gdbserver instance and debug using that. For that modify the
-`launch.json` by setting `request` to `"attach"` and `remote` to `true` and specifing the
-port and optionally hostname in `target`.
+本项目通过VSCode提供的WebView类，创建一个网页提供用户交互界面。信息通过TypeScript事件传入网页，通过函数调用输出至Debugger插件。
 
-```
-"request": "attach",
-"executable": "./bin/executable",
-"target": ":2345",
-"cwd": "${workspaceRoot}",
-"remote": true
-```
+#### Debug APIs
 
-This will attach to the running process managed by gdbserver on localhost:2345. You might
-need to hit the start button in the debug bar at the top first to start the program.
+本项目调用了一些VSCode API实现部分常用流程的自动化，例如自动删除断点、切换调试信息文件等。
 
-Control over whether the debugger should continue executing on connect can be configured
-by setting `stopAtConnect`.  The default value is `false` so that execution will continue
-after connecting.
+## 实现
 
-### Using ssh for debugging on remote
+编写代码时，我主要关注以下调试信息的处理流程：
+![](./docs/imgs/text.png)
 
-Debugging using ssh automatically converts all paths between client & server and also optionally
-redirects X11 output from the server to the client.  
-Simply add a `ssh` object in your `launch` request.
+### 关键的寄存器和内存的数据获取
+![](./docs/imgs/messageFlow.png)
+stopped
+request
+event
+MI
+解析
+展示
 
-```
-"request": "launch",
-"target": "./executable",
-"cwd": "${workspaceRoot}",
-"ssh": {
-	"forwardX11": true,
-	"host": "192.168.178.57",
-	"cwd": "/home/remoteUser/project/",
-	"keyfile": "/path/to/.ssh/key", // OR
-	"password": "password123",
-	"user": "remoteUser",
-	"x11host": "localhost",
-	// x11port may also be specified as string containing only numbers (useful to use configuration variables)
-	"x11port": 6000,
-	// Optional, content will be executed on the SSH host before the debugger call.
-	"bootstrap": "source /home/remoteUser/some-env"
-}
-```
+### 断点检测
+部分断点时提供特殊功能。
 
-`ssh.sourceFileMap` will be used to trim off local paths and map them to the server. This is
-required for basically everything except watched variables or user commands to work.
+### 调试信息的获取
 
-For backward compatibility you can also use `cwd` and `ssh.cwd` for the mapping, this is only used
-if the newer `ssh.sourceFileMap` is not configured.
+麻烦：应用程序编译流程 解决办法：
+flow
 
-For X11 forwarding to work you first need to enable it in your Display Manager and allow the
-connections. To allow connections you can either add an entry for applications or run `xhost +`
-in the console while you are debugging and turn it off again when you are done using `xhost -`.
+### 获取特权级信息
 
-Because some builds requires one or more environment files to be sourced before running any
-command, you can use the `ssh.bootstrap` option to add some extra commands which will be prepended
-to the debugger call (using `&&` to join both).
+rCore-Tutorial trap机制
 
-### Extra Debugger Arguments
+### 界面美化
 
-Additional arguments can be supplied to the debugger if needed.  These will be added when
-the debugger executable (e.g., gdb, lldb-mi, etc.) is launched.  Extra debugger arguments
-are supplied via the `debugger_args` setting.  Note that the behavior of escaping these
-options depends on the environment in which the debugger is started.  For non-SSH
-debugging, the options are passed directly to the application and therefore no escaping is
-necessary (other than what is necessary for the JSON configuration). However, as a result
-of the options being passed directly to the application, care must be taken to place
-switches and switch values as separate entities in `debugger_args`, if they would normally
-be separated by a space.   For example, supplying the option and value
-`-iex "set $foo = \"bar\""` would consist of the following `debugger_args`:
-```json
-"debugger_args" : ["-iex", "set $foo = \"bar\""]
-```
-If `=` is used to associate switches with their values, than the switch and value should
-be placed together instead.  In fact, the following example shows 4 different ways in
-which to specify the same switch and value, using both short and long format, as well as
-switch values supplied as a separate parameter or supplied via the `=`:
-- ```json
-  "debugger_args" : ["-iex", "set $foo = \"bar\""]
-  ```
-- ```json
-  "debugger_args" : ["-iex=set $foo = \"bar\""]
-  ```
-- ```json
-  "debugger_args" : ["--init-eval-command", "set $foo = \"bar\""]
-  ```
-- ```json
-  "debugger_args" : ["--init-eval-command=set $foo = \"bar\""]
-  ```
-Where escaping is really necessary is when running the debugger over SSH.  In this case,
-the options are not passed directly to the application, but are instead combined with the
-application name, joined together with any other options, and sent to the remote system to
-be parsed and executed.  Thus, depending on the remote system, different escaping may be
-necessary.  The following shows how the same command as above needs to be escaped
-differently based on whether the remote system is a POSIX or a Windows system.
-- SSH to Linux machine:
-  ```json
-  "debugger_args": ["-iex", "'set $foo = \"bar\"'"]
-  ```
-- SSH to Windows machine:
-  ```json
-  "debugger_args": ["-iex", "\"set $foo = \\\"bar\\\"\""]
-  ```
-You may need to experiment to find the correct escaping necessary for the command to be
-sent to the debugger as you intended.
+运用bootstrap等前端技术，提供对用户更加友好的图形界面：
+![coredebugger-screenshot-bootstrap-mid](./docs/imgs/coredebugger-screenshot-bootstrap-mid.png)
 
-## [Issues](https://github.com/WebFreak001/code-debug)
+## 开发记录和知识库
+
+[在线版本(观看效果更佳)](https://shimo.im/docs/hRQk6dXkxHp9pR3T)
+
+[离线版本](./docs/%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%95%E5%92%8C%E7%9F%A5%E8%AF%86%E5%BA%93.pdf)
