@@ -23,14 +23,40 @@
 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本），
 或者试试直接访问
 [这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下。
-
-1. 修改rCore-Tutorial-v3的源码和编译参数：[见此](./docs/rCore-mod.md)
-
-1. 创建launch.json（可根据自己需要修改）: [见此](./docs/launchjson.md)
+1. 参考。确保gdb和qemu在环境变量里
+1. 用nodesource安装nodejs 
+1. 安装 vscode
+1. 修改rCore-Tutorial-v3的源码和编译参数（diff文件可用vscode+diff插件观看）：[见此](./docs/rCore-mod.diff)
+1. clone 本仓库，npm install
+1. start debugging
+1. 修改src/frontend/fakeMakefile.ts里的`PROJECT_PATH`
+1. 创建launch.json（选GDB）（可根据自己需要修改）: 
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Attach to Qemu",
+            "executable": "此处修改为rCore-Tutorial-v3所在目录/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
+            "target": ":1234",
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText",
+            "gdbpath": "此处修改为工具链所在目录/riscv64-unknown-elf-toolchain-10.2.0-2020.12.8-x86_64-linux-ubuntu14/bin/riscv64-unknown-elf-gdb",
+            "showDevDebugOutput":true,
+            "internalConsoleOptions": "openOnSessionStart",
+            "printCalls": true,
+            "stopAtConnect": true
+        },
+    ]
+}
+```
 
 ## 使用
 
-1. 打开rCore-Tutorial-v3的目录
+1. clone并打开rCore-Tutorial-v3的目录,先cd os&&make run编译一遍看看能否运行
 2. `ctrl+shift+p` ，执行命令`core-debugger.launchCoreDebugger`
 3. 清除所有断点
 4. 设置内核入口、出口断点
@@ -39,6 +65,8 @@
 7. 在用户态程序中如果想观察内核内的执行流，应先清除所有断电，设置内核入口、出口断点
 
 [视频演示](./docs/imgs/pre.mp4)
+### 注意事项
+1. 不要展开Self变量（gdb的bug）
 
 ## Debugger插件设计
 

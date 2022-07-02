@@ -13,13 +13,14 @@ import { resolveCliPathFromVSCodeExecutablePath } from "vscode-test";
 import { rejects } from "assert";
 import { Z_NO_COMPRESSION } from "zlib";
 import { riscvRegNames } from "./webview"
+import {startupCmd} from "./fakeMakefile"
 
 export function activate(context: vscode.ExtensionContext) {
 	let NEXT_TERM_ID = 1;
 	context.subscriptions.push(vscode.commands.registerCommand('core-debugger.launchCoreDebugger', () => {
 		vscode.commands.executeCommand("core-debugger.startPanel");
 		const terminal = vscode.window.createTerminal(`CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`);
-		terminal.sendText("cd && make run");
+		terminal.sendText(startupCmd);
 		vscode.commands.executeCommand("workbench.action.debug.start");
 	}));
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("debugmemory", new MemoryContentProvider()));

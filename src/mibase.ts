@@ -135,21 +135,30 @@ export class MI2DebugSession extends DebugSession {
 		this.sendEvent(new OutputEvent(msg, type));
 	}
 
-	protected handleBreakpoint(info: MINode) {
-		const event = new StoppedEvent("breakpoint", parseInt(info.record("thread-id")));
-		(event as DebugProtocol.StoppedEvent).body.allThreadsStopped = info.record("stopped-threads") == "all";
-		this.sendEvent(event);
-		this.sendEvent({ event: "info", body: info } as DebugProtocol.Event);
-		if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" && info.outOfBandRecord[0].output[3][1][5][1] === '135') {
-			this.sendEvent({ event: "inUser" } as DebugProtocol.Event);
-		}
-		else if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" &&
-			info.outOfBandRecord[0].output[3][1][5][1] === '65') {
-			this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
-		}
+/*
+GDB -> App: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done","results":[["threads",[[["id","1"],["target-id","Thread 1.1"],["details","CPU#0 [running]"],["frame",[["level","0"],["addr","0x0000000000010156"],["func","initproc::main"],["args",[]],["file","src/bin/initproc.rs"],["fullname","/home/czy/rCore-Tutorial-v3/user/src/bin/initproc.rs"],["line","13"],["arch","riscv:rv64"]]],["state","stopped"]]]],["current-thread-id","1"]]}}
 
-
+*/
+//TODO czy messy logic
+//software engineering principles
+protected handleBreakpoint(info: MINode) {
+	const event = new StoppedEvent("breakpoint", parseInt(info.record("thread-id")));
+	(event as DebugProtocol.StoppedEvent).body.allThreadsStopped = info.record("stopped-threads") == "all";
+	this.sendEvent(event);
+	this.sendEvent({ event: "info", body: info } as DebugProtocol.Event);
+	if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" && info.outOfBandRecord[0].output[3][1][5][1] === '135') {
+		this.sendEvent({ event: "inUser" } as DebugProtocol.Event);
 	}
+	else if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" &&
+		info.outOfBandRecord[0].output[3][1][5][1] === '65') {
+		this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
+	}// MUST use else if
+	else if (info.outOfBandRecord[0].output[3][1][4][1].includes("rCore-Tutorial-v3/os")){
+		this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
+	}
+
+
+}
 
 	protected handleBreak(info?: MINode) {
 		const event = new StoppedEvent("step", info ? parseInt(info.record("thread-id")) : 1);

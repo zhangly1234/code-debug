@@ -1,0 +1,122 @@
+diff --git a/easy-fs-fuse/src/main.rs b/easy-fs-fuse/src/main.rs
+index 17b24654..f3d32f76 100644
+--- a/easy-fs-fuse/src/main.rs
++++ b/easy-fs-fuse/src/main.rs
+@@ -59,11 +59,11 @@ fn easy_fs_pack() -> std::io::Result<()> {
+             .write(true)
+             .create(true)
+             .open(format!("{}{}", target_path, "fs.img"))?;
+-        f.set_len(16 * 2048 * 512).unwrap();
++        f.set_len(64 * 2048 * 512).unwrap();
+         f
+     })));
+     // 16MiB, at most 4095 files
+-    let efs = EasyFileSystem::create(block_file, 16 * 2048, 1);
++    let efs = EasyFileSystem::create(block_file, 64 * 2048, 1);
+     let root_inode = Arc::new(EasyFileSystem::root_inode(&efs));
+     let apps: Vec<_> = read_dir(src_path)
+         .unwrap()
+diff --git a/os/Cargo.toml b/os/Cargo.toml
+index 4ebae8a4..bf3fec98 100644
+--- a/os/Cargo.toml
++++ b/os/Cargo.toml
+@@ -28,3 +28,8 @@ board_k210 = []
+ 
+ [profile.release]
+ debug = true
++opt-level=0
++# debuginfo-level = 1
++
++# Debuginfo level for the compiler.
++# debuginfo-level-rustc = 2
+\ No newline at end of file
+diff --git a/os/src/config.rs b/os/src/config.rs
+index 8f8b709a..656556c5 100644
+--- a/os/src/config.rs
++++ b/os/src/config.rs
+@@ -1,9 +1,9 @@
+ #[allow(unused)]
+ 
+ pub const USER_STACK_SIZE: usize = 4096 * 2;
+-pub const KERNEL_STACK_SIZE: usize = 4096 * 2;
++pub const KERNEL_STACK_SIZE: usize = 4096 * 20;
+ pub const KERNEL_HEAP_SIZE: usize = 0x100_0000;
+-pub const MEMORY_END: usize = 0x88000000;
++pub const MEMORY_END: usize = 0x88000000;//czy may need change
+ pub const PAGE_SIZE: usize = 0x1000;
+ pub const PAGE_SIZE_BITS: usize = 0xc;
+ 
+diff --git a/user/.cargo/config b/user/.cargo/config
+index e5ded8a1..867bffc8 100644
+--- a/user/.cargo/config
++++ b/user/.cargo/config
+@@ -3,5 +3,5 @@ target = "riscv64gc-unknown-none-elf"
+ 
+ [target.riscv64gc-unknown-none-elf]
+ rustflags = [
+-    "-Clink-args=-Tsrc/linker.ld",
++    "-Clink-args=-Tsrc/linker.ld","-Zunstable-options",
+ ]
+diff --git a/user/Cargo.toml b/user/Cargo.toml
+index 542a624a..705844a1 100644
+--- a/user/Cargo.toml
++++ b/user/Cargo.toml
+@@ -13,3 +13,9 @@ riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
+ 
+ [profile.release]
+ debug = true
++# opt-level=0
++# split-debuginfo="unpacked"
++debuginfo-level = 1
++
++# Debuginfo level for the compiler.
++debuginfo-level-rustc = 2
+\ No newline at end of file
+diff --git a/user/src/bin/initproc.rs b/user/src/bin/initproc.rs
+index d25aee14..827f62bc 100644
+--- a/user/src/bin/initproc.rs
++++ b/user/src/bin/initproc.rs
+@@ -3,10 +3,19 @@
+ 
+ extern crate user_lib;
+ 
++use user_lib::{println, getpid};
++
+ use user_lib::{exec, fork, wait, yield_};
+ 
+ #[no_mangle]
+ fn main() -> i32 {
++
++    println!("aaaaaaaaaaaaaa");
++    let a = getpid();
++    println!("{}",a);
++   
++
++
+     if fork() == 0 {
+         exec("user_shell\0", &[core::ptr::null::<u8>()]);
+     } else {
+diff --git a/user/src/lib.rs b/user/src/lib.rs
+index 6f57edd4..e2f15790 100644
+--- a/user/src/lib.rs
++++ b/user/src/lib.rs
+@@ -17,7 +17,7 @@ use alloc::vec::Vec;
+ use buddy_system_allocator::LockedHeap;
+ use syscall::*;
+ 
+-const USER_HEAP_SIZE: usize = 32768;
++const USER_HEAP_SIZE: usize = 32768*4;
+ 
+ static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
+ 
+diff --git a/user/src/linker.ld b/user/src/linker.ld
+index 02f7b6bf..1df4e67e 100644
+--- a/user/src/linker.ld
++++ b/user/src/linker.ld
+@@ -27,6 +27,5 @@ SECTIONS
+     }
+     /DISCARD/ : {
+         *(.eh_frame)
+-        *(.debug*)
+     }
+ }
