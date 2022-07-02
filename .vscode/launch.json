@@ -13,7 +13,7 @@
 			"outFiles": [
 				"${workspaceRoot}/out/**/*.js"
 			],
-			"preLaunchTask": "npm"
+			"preLaunchTask": "compile"
 		},
 		{
 			"name": "code-debug server",
@@ -28,7 +28,7 @@
 				"${workspaceRoot}/out/**/*.js"
 			],
 			"cwd": "${workspaceRoot}",
-			"preLaunchTask": "npm"
+			"preLaunchTask": "compile"
 		},
 		{
 			"name": "Launch Tests",
@@ -44,7 +44,13 @@
 			"outFiles": [
 				"${workspaceRoot}/out/**/*.js"
 			],
-			"preLaunchTask": "npm"
+			"preLaunchTask": "compile"
 		}
+	],
+	"compounds": [
+		{
+			"name": "Extension Debugging (Extension + Debug Server)",
+			"configurations": ["Launch Extension", "code-debug server"]
+		},
 	]
 }
