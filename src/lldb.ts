@@ -98,7 +98,7 @@ class LLDBDebugSession extends MI2DebugSession {
 		this.initDebugger();
 		this.quit = false;
 		this.attached = true;
-		this.initialRunCommand = !!args.stopAtConnect ? RunCommand.NONE : RunCommand.CONTINUE;
+		this.initialRunCommand = args.stopAtConnect ? RunCommand.NONE : RunCommand.CONTINUE;
 		this.isSSH = false;
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
@@ -118,7 +118,7 @@ class LLDBDebugSession extends MI2DebugSession {
 		if (substitutions) {
 			Object.keys(substitutions).forEach(source => {
 				this.miDebugger.extraCommands.push("settings append target.source-map " + source + " " + substitutions[source]);
-			})
+			});
 		}
 	}
 }

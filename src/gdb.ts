@@ -107,7 +107,7 @@ export class GDBDebugSession extends MI2DebugSession {
 		this.initDebugger();
 		this.quit = false;
 		this.attached = !args.remote;
-		this.initialRunCommand = !!args.stopAtConnect ? RunCommand.NONE : RunCommand.CONTINUE;
+		this.initialRunCommand = args.stopAtConnect ? RunCommand.NONE : RunCommand.CONTINUE;
 		this.isSSH = false;
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
@@ -167,7 +167,7 @@ export class GDBDebugSession extends MI2DebugSession {
 		if (substitutions) {
 			Object.keys(substitutions).forEach(source => {
 				this.miDebugger.extraCommands.push("gdb-set substitute-path \"" + escape(source) + "\" \"" + escape(substitutions[source]) + "\"");
-			})
+			});
 		}
 	}
 

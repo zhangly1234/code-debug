@@ -5,7 +5,6 @@ import { Breakpoint, IBackend, Variable, VariableObject, ValuesFormattingMode, M
 import { MINode } from './backend/mi_parse';
 import { expandValue, isExpandable } from './backend/gdb_expansion';
 import { MI2 } from './backend/mi2/mi2';
-import { posix } from "path";
 import * as systemPath from "path";
 import * as net from "net";
 import * as os from "os";
@@ -15,6 +14,7 @@ import * as vscode from "vscode";
 
 
 
+import { SourceFileMap } from "./source_file_map";
 
 class ExtendedVariable {
 	constructor(public name, public options) {
@@ -42,7 +42,7 @@ export class MI2DebugSession extends DebugSession {
 	protected initialRunCommand: RunCommand;
 	protected stopAtEntry: boolean | string;
 	protected isSSH: boolean;
-	protected sourceFileMap: Map<string, string>;
+	protected sourceFileMap: SourceFileMap;
 	protected started: boolean;
 	protected crashed: boolean;
 	protected miDebugger: MI2;
@@ -63,7 +63,7 @@ export class MI2DebugSession extends DebugSession {
 		this.miDebugger.on("breakpoint", this.handleBreakpoint.bind(this));
 		this.miDebugger.on("watchpoint", this.handleBreak.bind(this));	// consider to parse old/new, too (otherwise it is in the console only)
 		this.miDebugger.on("step-end", this.handleBreak.bind(this));
-		// this.miDebugger.on("step-out-end", this.handleBreak.bind(this));  // was combined into step-end
+		//this.miDebugger.on("step-out-end", this.handleBreak.bind(this));  // was combined into step-end
 		this.miDebugger.on("step-other", this.handleBreak.bind(this));
 		this.miDebugger.on("signal-stop", this.handlePause.bind(this));
 		this.miDebugger.on("thread-created", this.threadCreatedEvent.bind(this));
@@ -88,8 +88,8 @@ export class MI2DebugSession extends DebugSession {
 					let func = rawCmd;
 					let args = [];
 					if (spaceIndex != -1) {
-						func = rawCmd.substr(0, spaceIndex);
-						args = JSON.parse(rawCmd.substr(spaceIndex + 1));
+						func = rawCmd.substring(0, spaceIndex);
+						args = JSON.parse(rawCmd.substring(spaceIndex + 1));
 					}
 					Promise.resolve(this.miDebugger[func].apply(this.miDebugger, args)).then(data => {
 						c.write(data.toString());
@@ -196,6 +196,7 @@ protected handleBreakpoint(info: MINode) {
 
 		if (this.serverPath)
 			fs.unlink(this.serverPath, (err) => {
+				// eslint-disable-next-line no-console
 				console.error("Failed to unlink debug server");
 			});
 	}
@@ -268,16 +269,7 @@ protected handleBreakpoint(info: MINode) {
 			let path = args.source.path;
 			if (this.isSSH) {
 				// convert local path to ssh path
-				if (path.indexOf("\\") != -1)
-					path = path.replace(/\\/g, "/").toLowerCase();
-				// ideCWD is the local path, gdbCWD is the ssh path, both had the replacing \ -> / done up-front
-				for (let [ideCWD, gdbCWD] of this.sourceFileMap) {
-					if (path.startsWith(ideCWD)) {
-						path = posix.relative(ideCWD, path);
-						path = posix.join(gdbCWD, path); // we combined a guaranteed path with relative one (works with GDB both on GNU/Linux and Win32)
-						break;
-					}
-				}
+				path = this.sourceFileMap.toRemotePath(path);
 			}
 			const all = args.breakpoints.map(brk => {
 				return this.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
@@ -312,7 +304,7 @@ protected handleBreakpoint(info: MINode) {
 				threads: []
 			};
 			for (const thread of threads) {
-				let threadName = thread.name || thread.targetId || "<unnamed>";
+				const threadName = thread.name || thread.targetId || "<unnamed>";
 				response.body.threads.push(new Thread(thread.id, thread.id + ":" + threadName));
 			}
 			this.sendResponse(response);
@@ -338,19 +330,10 @@ protected handleBreakpoint(info: MINode) {
 				if (path) {
 					if (this.isSSH) {
 						// convert ssh path to local path
-						if (path.indexOf("\\") != -1)
-							path = path.replace(/\\/g, "/").toLowerCase();
-						// ideCWD is the local path, gdbCWD is the ssh path, both had the replacing \ -> / done up-front
-						for (let [ideCWD, gdbCWD] of this.sourceFileMap) {
-							if (path.startsWith(gdbCWD)) {
-								path = posix.relative(gdbCWD, path);	// only operates on "/" paths
-								path = systemPath.resolve(ideCWD, path);	// will do the conversion to "\" on Win32
-								break;
-							}
-						}
+						path = this.sourceFileMap.toLocalPath(path);
 					} else if (process.platform === "win32") {
 						if (path.startsWith("\\cygdrive\\") || path.startsWith("/cygdrive/")) {
-							path = path[10] + ":" + path.substr(11); // replaces /cygdrive/c/foo/bar.txt with c:/foo/bar.txt
+							path = path[10] + ":" + path.substring(11); // replaces /cygdrive/c/foo/bar.txt with c:/foo/bar.txt
 						}
 					}
 					source = new Source(element.fileName, path);
@@ -408,7 +391,7 @@ protected handleBreakpoint(info: MINode) {
 					//
 					// If we don't send this event, the client may start requesting data (such as
 					// stack frames, local variables, etc.) since they believe the target is
-					// stopped.  Furthermore the client may not be indicating the proper status
+					// stopped.  Furthermore, the client may not be indicating the proper status
 					// to the user (may indicate stopped when the target is actually running).
 					this.sendEvent(new ContinuedEvent(1, true));
 				}));
@@ -420,7 +403,7 @@ protected handleBreakpoint(info: MINode) {
 						this.handlePause(undefined);
 				}));
 				break;
-			case RunCommand.NONE:
+			case RunCommand.NONE: {
 				// Not all debuggers seem to provide an out-of-band status that they are stopped
 				// when attaching (e.g., lldb), so the client assumes we are running and gets
 				// confused when we don't actually run or continue.  Therefore, we'll force a
@@ -430,6 +413,7 @@ protected handleBreakpoint(info: MINode) {
 				event.body.allThreadsStopped = true;
 				this.sendEvent(event);
 				break;
+			}
 			default:
 				throw new Error('Unhandled run command: ' + RunCommand[this.initialRunCommand]);
 		}
@@ -456,7 +440,7 @@ protected handleBreakpoint(info: MINode) {
 			}
 
 			return new Scope(scopeName, handle, expensive);
-		}
+		};
 
 		scopes.push(createScope("Local", false));
 
@@ -560,7 +544,7 @@ protected handleBreakpoint(info: MINode) {
 			// Variable members
 			let variable;
 			try {
-				// TODO: this evals on an (effectively) unknown thread for multithreaded programs.
+				// TODO: this evaluates on an (effectively) unknown thread for multithreaded programs.
 				variable = await this.miDebugger.evalExpression(JSON.stringify(id), 0, 0);
 				try {
 					let expanded = expandValue(createVariable, variable.result("value"), id, variable);
@@ -618,7 +602,7 @@ protected handleBreakpoint(info: MINode) {
 						this.sendResponse(response);
 					};
 					const addOne = async () => {
-						// TODO: this evals on an (effectively) unknown thread for multithreaded programs.
+						// TODO: this evaluates on an (effectively) unknown thread for multithreaded programs.
 						const variable = await this.miDebugger.evalExpression(JSON.stringify(`${varReq.name}+${arrIndex})`), 0, 0);
 						try {
 							const expanded = expandValue(createVariable, variable.result("value"), varReq.name, variable);
@@ -788,7 +772,8 @@ protected handleBreakpoint(info: MINode) {
 	}
 
 	protected gotoTargetsRequest(response: DebugProtocol.GotoTargetsResponse, args: DebugProtocol.GotoTargetsArguments): void {
-		this.miDebugger.goto(args.source.path, args.line).then(done => {
+		const path: string = this.isSSH ? this.sourceFileMap.toRemotePath(args.source.path) : args.source.path;
+		this.miDebugger.goto(path, args.line).then(done => {
 			response.body = {
 				targets: [{
 					id: 1,
@@ -807,28 +792,11 @@ protected handleBreakpoint(info: MINode) {
 		this.sendResponse(response);
 	}
 
-	private addSourceFileMapEntry(gdbCWD: string, ideCWD: string): void {
-		// if it looks like a Win32 path convert to "/"-style for comparisions and to all-lower-case
-		if (ideCWD.indexOf("\\") != -1)
-			ideCWD = ideCWD.replace(/\\/g, "/").toLowerCase();
-		if (!ideCWD.endsWith("/"))
-			ideCWD = ideCWD + "/"
-		// ensure that we only replace complete paths
-		if (gdbCWD.indexOf("\\") != -1)
-			gdbCWD = gdbCWD.replace(/\\/g, "/").toLowerCase();
-		if (!gdbCWD.endsWith("/"))
-			gdbCWD = gdbCWD + "/"
-		this.sourceFileMap.set(ideCWD, gdbCWD);
-	}
-
 	protected setSourceFileMap(configMap: { [index: string]: string }, fallbackGDB: string, fallbackIDE: string): void {
-		this.sourceFileMap = new Map<string, string>();
 		if (configMap === undefined) {
-			this.addSourceFileMapEntry(fallbackGDB, fallbackIDE);
+			this.sourceFileMap = new SourceFileMap({[fallbackGDB]: fallbackIDE});
 		} else {
-			for (let [gdbPath, localPath] of Object.entries(configMap)) {
-				this.addSourceFileMapEntry(gdbPath, localPath);
-			}
+			this.sourceFileMap = new SourceFileMap(configMap);
 		}
 	}
 
