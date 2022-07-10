@@ -23,7 +23,7 @@
 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本），
 或者试试直接访问
 [这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下。
-1. 参考。确保gdb和qemu在环境变量里
+1. 参考。确保gdb和qemu在环境变量里参考。确保gd参考。确保gdb和qemu在环境变量里b和qemu在环境变量里
 1. 用nodesource安装nodejs 
 1. 安装 vscode
 1. 修改rCore-Tutorial-v3的源码和编译参数（diff文件可用vscode+diff插件观看）：[见此](./docs/rCore-mod.diff)
@@ -65,8 +65,22 @@
 7. 在用户态程序中如果想观察内核内的执行流，应先清除所有断电，设置内核入口、出口断点
 
 [视频演示](./docs/imgs/pre.mp4)
-### 注意事项
-1. 不要展开Self变量（gdb的bug）
+### 功能
+演示视频：
+#### 系统调用
+用户->内核->用户
+
+#### 数据结构
+注：规模，差异大。此处列出可行的示例，欢迎同学们来搞
+
+#### 
+
+### 暂不可跟踪
+#### Self变量（这是gdb的bug。见https://sourceware.org/gdb/onlinedocs/gdb/Rust.html）
+#### lazy_static! 变量（宏，返回值，难以跟踪）。如PCB,TCB
+不靠谱的方法：
+
+
 
 ## Debugger插件设计
 

@@ -9,7 +9,6 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import { MI2DebugSession } from "../mibase"
 import { isNullOrUndefined } from "util";
 import { resolve } from "dns";
-import { resolveCliPathFromVSCodeExecutablePath } from "vscode-test";
 import { rejects } from "assert";
 import { Z_NO_COMPRESSION } from "zlib";
 import { riscvRegNames } from "./webview"
@@ -102,6 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
 					if (message.type === "event") {
 						if (message.event === "stopped") {//czy move this section to mi2.ts later
 							//console.log("webview should update now. sending eventTest");
+							vscode.debug.addBreakpoints([{id:'0',enabled:true},{id:'1',enabled:true},{id:'2',enabled:true},{id:'3',enabled:true},{id:'4',enabled:true},{id:'5',enabled:true},{id:'6',enabled:true},{id:'7',enabled:true},{id:'8',enabled:true}]);//TODO infinite breakpoints
 							vscode.debug.activeDebugSession?.customRequest("eventTest");
 							//console.log("evenTest sent. Requesting registersNamesRequest and registersValuesRequest. ")
 							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
@@ -138,6 +138,8 @@ export function activate(context: vscode.ExtensionContext) {
 							//TODO save current breakpoints and webviewMemState
 							webviewMemState = [];
 							removeAllCliBreakpoints();
+							vscode.debug.activeDebugSession?.customRequest("applyBreakpointSet","initproc");//TODO change this when multiple files are supported
+							vscode.window.showInformationMessage("switched to initproc breakpoints");
 							//czy TODO support many debug files 
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", { debugFilepath: os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/initproc" });
 							currentPanel.webview.postMessage({ inUser: true });
@@ -146,6 +148,9 @@ export function activate(context: vscode.ExtensionContext) {
 						}
 						else if (message.event === "inKernel") {
 							currentPanel.webview.postMessage({ inKernel: true });
+							removeAllCliBreakpoints();
+							vscode.window.showInformationMessage("switched to kernel breakpoints");
+							vscode.debug.activeDebugSession?.customRequest("applyBreakpointSet","kernel");//user program shouldn't be called kernel
 							console.log("/////////////////////////INKERNEL///////////////////");
 						}
 						else if (message.event === "info") {
@@ -423,6 +428,7 @@ function removeAllCliBreakpoints(){
 	vscode.commands.executeCommand("workbench.debug.viewlet.action.removeAllBreakpoints");
 	vscode.debug.activeDebugSession?.customRequest("removeAllCliBreakpoints");
 }
+
 
 function getDebugPanelInfo() {
 

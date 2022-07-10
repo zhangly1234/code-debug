@@ -844,7 +844,6 @@ protected handleBreakpoint(info: MINode) {
 				this.miDebugger.sendCliCommand("remove-symbol-file "+args.debugFilepath);
 				break;
 			
-			// bad practice, breakpoints are hidden. TODO replace with vscode.debug.addBreakpoints later.
 			case "setKernelInOutBreakpoints"://remove previous breakpoints in this source
 				this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/trap/mod.rs"} as DebugProtocol.Source,breakpoints:[{line:135},{line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
 				break;
@@ -854,6 +853,16 @@ protected handleBreakpoint(info: MINode) {
 			case "nuke":
 				this.miDebugger.sendCliCommand("del");
 				break;
+			case "applyBreakpointSet":
+				console.log("applyBreakpointSet triggered");
+				if(args==='kernel'){
+					this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/trap/mod.rs"} as DebugProtocol.Source,breakpoints:[{line:135},{line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
+				}
+				if(args==='initproc'){
+					this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/bin/initproc.rs"} as DebugProtocol.Source,breakpoints:[{line:13}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
+				}
+				
+			// 	break;
 			default:
 				return this.sendResponse(response);
 		}

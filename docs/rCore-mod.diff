@@ -46,6 +46,66 @@ index 8f8b709a..656556c5 100644
  pub const PAGE_SIZE: usize = 0x1000;
  pub const PAGE_SIZE_BITS: usize = 0xc;
  
+diff --git a/os/src/task/manager.rs b/os/src/task/manager.rs
+index 168ba32e..e1ce8e9f 100644
+--- a/os/src/task/manager.rs
++++ b/os/src/task/manager.rs
+@@ -1,18 +1,25 @@
++use core::borrow::Borrow;
++
+ use super::{ProcessControlBlock, TaskControlBlock};
+ use crate::sync::UPIntrFreeCell;
+ use alloc::collections::{BTreeMap, VecDeque};
+ use alloc::sync::Arc;
+ use lazy_static::*;
+-
++#[repr(C)]
+ pub struct TaskManager {
+-    ready_queue: VecDeque<Arc<TaskControlBlock>>,
++    pub upper_border:usize,
++    pub ready_queue: VecDeque<Arc<TaskControlBlock>>,
++    pub lower_border:usize,
+ }
+ 
+ /// A simple FIFO scheduler.
+ impl TaskManager {
+     pub fn new() -> Self {
+         Self {
++            upper_border:0xAAAAAAAA,
+             ready_queue: VecDeque::new(),
++            lower_border:0xBBBBBBBB
++
+         }
+     }
+     pub fn add(&mut self, task: Arc<TaskControlBlock>) {
+@@ -21,17 +28,27 @@ impl TaskManager {
+     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
+         self.ready_queue.pop_front()
+     }
++    pub fn get_ready_queue_pointer(&mut self) -> &VecDeque<Arc<TaskControlBlock>> {
++        &self.ready_queue
++    }
+ }
+ 
++
+ lazy_static! {
+     pub static ref TASK_MANAGER: UPIntrFreeCell<TaskManager> =
+         unsafe { UPIntrFreeCell::new(TaskManager::new()) };
++    
+     pub static ref PID2PCB: UPIntrFreeCell<BTreeMap<usize, Arc<ProcessControlBlock>>> =
+         unsafe { UPIntrFreeCell::new(BTreeMap::new()) };
+ }
++static mut TM_RQ:usize=0;
+ 
+ pub fn add_task(task: Arc<TaskControlBlock>) {
+     TASK_MANAGER.exclusive_access().add(task);
++    //println!("TASK_MANAGER in {:p}\n",&TASK_MANAGER);
++    unsafe{
++        TM_RQ=&TASK_MANAGER.exclusive_access().ready_queue as *const _ as usize;
++    }
+ }
+ 
+ pub fn fetch_task() -> Option<Arc<TaskControlBlock>> {
 diff --git a/user/.cargo/config b/user/.cargo/config
 index e5ded8a1..867bffc8 100644
 --- a/user/.cargo/config
