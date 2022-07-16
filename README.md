@@ -179,6 +179,15 @@ todos:
 
 
 ## 安装与使用
+### 安装-方法1
+vmware虚拟磁盘：
+```
+链接：https://pan.baidu.com/s/1qqa1yS__iAP2a2yJk7PNrQ?pwd=1234
+提取码：1234
+```
+用户名oslab，密码是一个空格
+注意修改下git的用户名和邮箱
+### 安装-方法2
 1. 推荐用ubuntu20.04虚拟机。其它版本请确保使用较新的`npm`和`node`。
 1. 获取risc-v工具链
 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本），
@@ -213,18 +222,19 @@ todos:
         },
     ]
 }
-1. 在打开的新窗口内`Ctrl+Shift+P`找到并点击`CoreDebugger:Launch Coredebugger`
+
 ```
 
-## 使用
+### 使用
 
+1. 在打开的新窗口内`Ctrl+Shift+P`找到并点击`CoreDebugger:Launch Coredebugger`
 1. 清除所有断点
 1. 设置内核入口、出口断点
 1. 按continue按钮开始运行rCore-Tutorial
 1. 当运行到位于内核出口的断点时，插件会自动删除已有断点，此时用户可以设置用户态程序的断点
 1. 在用户态程序中如果想观察内核内的执行流，应先清除所有断点，设置内核入口、出口断点
 
-[视频演示](./docs/imgs/pre.mp4)
+[视频演示](./docs/imgs/pre_with_sub.mp4)
 ### 功能
 
 #### 跟踪系统调用
@@ -252,5 +262,6 @@ Vec和VecDeque的pointer值通过gdb查看是错的（都是0x1,0x2之类的很�
 [在线版本(观看效果更佳)](https://shimo.im/docs/hRQk6dXkxHp9pR3T)
 
 [离线版本](./docs/%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%95%E5%92%8C%E7%9F%A5%E8%AF%86%E5%BA%93.pdf)
+
 
 ## 分工与协作
