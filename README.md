@@ -1,56 +1,4 @@
 # proj158-rust-debugger
-## 目录
-- [proj158-rust-debugger](#proj158-rust-debugger)
-  * [目录](#%E7%9B%AE%E5%BD%95)
-  * [引言](#%E5%BC%95%E8%A8%80)
-    + [项目背景](#%E9%A1%B9%E7%9B%AE%E8%83%8C%E6%99%AF)
-    + [相关工作](#%E7%9B%B8%E5%85%B3%E5%B7%A5%E4%BD%9C)
-      - [VS Code 中的调试架构](#vs-code-%E4%B8%AD%E7%9A%84%E8%B0%83%E8%AF%95%E6%9E%B6%E6%9E%84)
-      - [Debug Adapter 协议](#debug-adapter-%E5%8D%8F%E8%AE%AE)
-        * [Events](#events)
-        * [Requests](#requests)
-        * [Responds](#responds)
-      - [gdbstub on qemu](#gdbstub-on-qemu)
-  * [调试工具设计](#%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7%E8%AE%BE%E8%AE%A1)
-    + [整体架构设计](#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1)
-    + [Debug Adapter](#debug-adapter)
-      - [消息传递流程](#%E6%B6%88%E6%81%AF%E4%BC%A0%E9%80%92%E6%B5%81%E7%A8%8B)
-    + [GDB/MI Interface](#gdbmi-interface)
-    + [调试操作系统相关的功能](#%E8%B0%83%E8%AF%95%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%9B%B8%E5%85%B3%E7%9A%84%E5%8A%9F%E8%83%BD)
-      - [特权级切换](#%E7%89%B9%E6%9D%83%E7%BA%A7%E5%88%87%E6%8D%A2)
-    + [用户界面](#%E7%94%A8%E6%88%B7%E7%95%8C%E9%9D%A2)
-  * [调试工具实现](#%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7%E5%AE%9E%E7%8E%B0)
-    + [关键的寄存器和内存的数据获取](#%E5%85%B3%E9%94%AE%E7%9A%84%E5%AF%84%E5%AD%98%E5%99%A8%E5%92%8C%E5%86%85%E5%AD%98%E7%9A%84%E6%95%B0%E6%8D%AE%E8%8E%B7%E5%8F%96)
-    + [断点检测](#%E6%96%AD%E7%82%B9%E6%A3%80%E6%B5%8B)
-    + [符号信息的获取](#%E7%AC%A6%E5%8F%B7%E4%BF%A1%E6%81%AF%E7%9A%84%E8%8E%B7%E5%8F%96)
-      - [编译](#%E7%BC%96%E8%AF%91)
-      - [rCore的修改](#rcore%E7%9A%84%E4%BF%AE%E6%94%B9)
-    + [扩展DAP协议](#%E6%89%A9%E5%B1%95dap%E5%8D%8F%E8%AE%AE)
-      - [请求](#%E8%AF%B7%E6%B1%82)
-      - [事件](#%E4%BA%8B%E4%BB%B6)
-    + [获取特权级信息](#%E8%8E%B7%E5%8F%96%E7%89%B9%E6%9D%83%E7%BA%A7%E4%BF%A1%E6%81%AF)
-    + [界面美化](#%E7%95%8C%E9%9D%A2%E7%BE%8E%E5%8C%96)
-    + [特权级切换](#%E7%89%B9%E6%9D%83%E7%BA%A7%E5%88%87%E6%8D%A2-1)
-      - [特权级的检测方法](#%E7%89%B9%E6%9D%83%E7%BA%A7%E7%9A%84%E6%A3%80%E6%B5%8B%E6%96%B9%E6%B3%95)
-      - [gdb bug 不能在...设断点 => 流程](#gdb-bug-%E4%B8%8D%E8%83%BD%E5%9C%A8%E8%AE%BE%E6%96%AD%E7%82%B9--%E6%B5%81%E7%A8%8B)
-      - [断点上下文](#%E6%96%AD%E7%82%B9%E4%B8%8A%E4%B8%8B%E6%96%87)
-      - [符号文件的切换](#%E7%AC%A6%E5%8F%B7%E6%96%87%E4%BB%B6%E7%9A%84%E5%88%87%E6%8D%A2)
-      - [Debug APIs](#debug-apis)
-      - [UI(前端页面)](#ui%E5%89%8D%E7%AB%AF%E9%A1%B5%E9%9D%A2)
-    + [性能测试与分析](#%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95%E4%B8%8E%E5%88%86%E6%9E%90)
-  * [总结与展望](#%E6%80%BB%E7%BB%93%E4%B8%8E%E5%B1%95%E6%9C%9B)
-  * [安装与使用](#%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8)
-  * [使用](#%E4%BD%BF%E7%94%A8)
-    + [功能](#%E5%8A%9F%E8%83%BD)
-      - [跟踪系统调用](#%E8%B7%9F%E8%B8%AA%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8)
-      - [跟踪内核数据结构](#%E8%B7%9F%E8%B8%AA%E5%86%85%E6%A0%B8%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84)
-    + [暂不可跟踪](#%E6%9A%82%E4%B8%8D%E5%8F%AF%E8%B7%9F%E8%B8%AA)
-      - [Self变量](#self%E5%8F%98%E9%87%8F)
-      - [lazy_static! 变量（宏，返回值，难以跟踪）。如PCB,TCB](#lazy_static-%E5%8F%98%E9%87%8F%E5%AE%8F%E8%BF%94%E5%9B%9E%E5%80%BC%E9%9A%BE%E4%BB%A5%E8%B7%9F%E8%B8%AA%E5%A6%82pcbtcb)
-      - [包含Vec和VecDeque的数据结构](#%E5%8C%85%E5%90%ABvec%E5%92%8Cvecdeque%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84)
-      - [被内联展开的函数](#%E8%A2%AB%E5%86%85%E8%81%94%E5%B1%95%E5%BC%80%E7%9A%84%E5%87%BD%E6%95%B0)
-  * [开发记录和知识库](#%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%95%E5%92%8C%E7%9F%A5%E8%AF%86%E5%BA%93)
-  * [分工与协作](#%E5%88%86%E5%B7%A5%E4%B8%8E%E5%8D%8F%E4%BD%9C)
 
 ## 引言
 
@@ -180,7 +128,7 @@ todos:
 
 ## 安装与使用
 ### 安装-方法1
-vmware虚拟磁盘：
+vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 ```
 链接：https://pan.baidu.com/s/1qqa1yS__iAP2a2yJk7PNrQ?pwd=1234
 提取码：1234
@@ -242,9 +190,14 @@ vmware虚拟磁盘：
 
 #### 跟踪内核数据结构
 注：内核中的各种数据结构差异很大。此处列出可行的示例，欢迎感兴趣的大佬们继续添加
-
-
-
+#### 直接观测内存
+Ctrl+Shift+P memory
+TODO MemState 代码可以删掉
+#### 断点组的切换
+DONE on:breakpointModified(TODO), stopped => updateWebviewBreakpointsInfo
+TODO on:brealpointFailed(TODO)=> vscode:nothing（根本不要去管。vscode就是故意这么设计的，编辑器和DA的断点是分离的，DA不能控制编辑器的断点。见https://stackoverflow.com/questions/55364690/is-it-possible-to-programmatically-set-breakpoints-with-a-visual-studio-code-ext）, DA:save to WebView
+TODO on:spaceStateChanged(TODO) => DA:revive breakpoints
+TODO: 以上三行写成汉字。这样做的话，程序设置的断点没法在vscode原生widget里出现。不过无所谓了，反正自己的webview里能看见。
 ### 暂不可跟踪
 #### Self变量
 这是gdb的bug，见https://sourceware.org/gdb/onlinedocs/gdb/Rust.html
@@ -257,11 +210,24 @@ vmware虚拟磁盘：
 Vec和VecDeque的pointer值通过gdb查看是错的（都是0x1,0x2之类的很小的值）。直接看内存可以得到正确结果
 #### 被内联展开的函数
 
+## 扩展
+### add
+extension.ts => handle stopped
+mibase.ts => customRequest 
+            -1-->requests 
+            -2-->this.miDebugger.sendCliCommand("add-symbol-file "+args.debugFilepath);
+            -3--> events
+extension.ts => handle stopped-events --> WebView
+### handleBreakpoint()=>inKernel,inUser
+### multiple debug file support
+vscode.debug.activeDebugSession?.customRequest("addDebugFile
+fix memState
+
 ## 开发记录和知识库
 
 [在线版本(观看效果更佳)](https://shimo.im/docs/hRQk6dXkxHp9pR3T)
 
-[离线版本](./docs/%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%95%E5%92%8C%E7%9F%A5%E8%AF%86%E5%BA%93.pdf)
+[（待更新）离线版本](./docs/%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%95%E5%92%8C%E7%9F%A5%E8%AF%86%E5%BA%93.pdf)
 
 
 ## 分工与协作

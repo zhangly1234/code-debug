@@ -850,19 +850,28 @@ protected handleBreakpoint(info: MINode) {
 			case "setKernelOutBreakpoints"://out only
 				break;
 			case "removeAllCliBreakpoints":
-			case "nuke":
 				this.miDebugger.sendCliCommand("del");
 				break;
+			//TODO 改掉自动断点切换的逻辑
+			//TODO link to WebView
 			case "applyBreakpointSet":
 				console.log("applyBreakpointSet triggered");
 				if(args==='kernel'){
-					this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/trap/mod.rs"} as DebugProtocol.Source,breakpoints:[{line:135},{line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
+					//this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/trap/mod.rs"} as DebugProtocol.Source,breakpoints:[{line:135},{line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
+					
 				}
 				if(args==='initproc'){
-					this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/bin/initproc.rs"} as DebugProtocol.Source,breakpoints:[{line:13}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
+					//this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/bin/initproc.rs"} as DebugProtocol.Source,breakpoints:[{line:13}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
 				}
-				
-			// 	break;
+				break;
+			case "listBreakpoints":
+				this.miDebugger.sendCliCommand("info breakpoints").then(
+					(data)=>{
+						this.sendEvent({ event: "listBreakpoints", body: { data: JSON.stringify(data) } } as DebugProtocol.Event);
+					}
+				);
+				this.sendResponse(response);
+				break;
 			default:
 				return this.sendResponse(response);
 		}

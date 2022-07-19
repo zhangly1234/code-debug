@@ -5,7 +5,7 @@ import * as path from "path";
 import * as os from "os";
 import { DebugSession } from "vscode-debugadapter";
 import { Session } from "inspector";
-import { DebugProtocol } from "vscode-debugprotocol";
+import { DebugProtocol } from 'vscode-debugprotocol';
 import { MI2DebugSession } from "../mibase"
 import { isNullOrUndefined } from "util";
 import { resolve } from "dns";
@@ -47,6 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
 	let webviewMemState = [{ from: 0x80200000, length: 16 }, { from: 0x80201000, length: 32 }];
 	let kernelInOutBreakpointArgs=1;
+
 	//========================================================================================
 
 
@@ -90,15 +91,19 @@ export function activate(context: vscode.ExtensionContext) {
 			);
 		})
 	);
-
+vscode.debug.onDidChangeBreakpoints
 	let disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
 		createDebugAdapterTracker() {
 			return {
 				onWillStartSession: () => { console.log("session started") },
 				onDidSendMessage: (message) => {
-
-
+					console.log("//////////MESSAGE///////////\n "+JSON.stringify(message)+"\n//////////////////\n ");
+					//TODO use switch case
+					if (message.command === "setBreakpoints"){
+						vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+					}
 					if (message.type === "event") {
+						//stopped之后的处理
 						if (message.event === "stopped") {//czy move this section to mi2.ts later
 							//console.log("webview should update now. sending eventTest");
 							vscode.debug.addBreakpoints([{id:'0',enabled:true},{id:'1',enabled:true},{id:'2',enabled:true},{id:'3',enabled:true},{id:'4',enabled:true},{id:'5',enabled:true},{id:'6',enabled:true},{id:'7',enabled:true},{id:'8',enabled:true}]);//TODO infinite breakpoints
@@ -110,8 +115,10 @@ export function activate(context: vscode.ExtensionContext) {
 							webviewMemState.forEach(element => {
 								vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
 							});
-
-						}
+							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
+							vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+							
+						}//处理自定义事件
 						else if (message.event === "eventTest") {
 							//console.log("Extension Received eventTest");
 						}
@@ -136,26 +143,29 @@ export function activate(context: vscode.ExtensionContext) {
 						}
 						else if (message.event === "inUser") {
 							//TODO save current breakpoints and webviewMemState
-							webviewMemState = [];
+							webviewMemState = [];//TODO applyMemStateSet
 							removeAllCliBreakpoints();
 							vscode.debug.activeDebugSession?.customRequest("applyBreakpointSet","initproc");//TODO change this when multiple files are supported
 							vscode.window.showInformationMessage("switched to initproc breakpoints");
 							//czy TODO support many debug files 
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", { debugFilepath: os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/initproc" });
 							currentPanel.webview.postMessage({ inUser: true });
-							vscode.window.showInformationMessage("All breakpoints removed. Symbol file `initproc`added. Now you can set breakpoints in initproc.rs (line 13 println!(\"aaaaa recommemded)");
+							vscode.window.showInformationMessage("All breakpoints removed. Symbol file `initproc` added. Now you can set breakpoints in initproc.rs (line 13 println!(\"aaaaa recommemded)");
 							console.log("/////////////////////////INUSER///////////////////");
 						}
 						else if (message.event === "inKernel") {
 							currentPanel.webview.postMessage({ inKernel: true });
-							removeAllCliBreakpoints();
+							//removeAllCliBreakpoints();
 							vscode.window.showInformationMessage("switched to kernel breakpoints");
-							vscode.debug.activeDebugSession?.customRequest("applyBreakpointSet","kernel");//user program shouldn't be called kernel
+							vscode.debug.activeDebugSession?.customRequest("applyBreakpointSet","kernel");//so user program shouldn't be called kernel
 							console.log("/////////////////////////INKERNEL///////////////////");
 						}
 						else if (message.event === "info") {
 							console.log("//////////////INFO///////////");
 							console.log(message.body);
+						}
+						else if(message.event === "listBreakpoints"){
+							vscode.window.showInformationMessage('此时应该更新断点信息表格。断点在调试控制台里');
 						}
 					}
 					//vscode.debug.activeDebugSession?.customRequest("envokeUpdateDebugWebviewEvent");},
