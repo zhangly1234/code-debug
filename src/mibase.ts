@@ -15,6 +15,8 @@ import * as vscode from "vscode";
 
 
 import { SourceFileMap } from "./source_file_map";
+import { Address } from 'cluster';
+import { strict } from 'assert';
 
 class ExtendedVariable {
 	constructor(public name, public options) {
@@ -32,6 +34,113 @@ class VariableScope {
 
 export enum RunCommand { CONTINUE, RUN, NONE }
 
+class AddressSpace {
+	name:string;
+	setBreakpointsArguments:DebugProtocol.SetBreakpointsArguments[];
+	constructor(name:string,setBreakpointsArguments:DebugProtocol.SetBreakpointsArguments[]){
+		this.name=name;
+		this.setBreakpointsArguments=setBreakpointsArguments;
+	}
+}
+
+class AddressSpaces{
+	protected spaces:AddressSpace[];
+	protected currentSpaceName:string;
+	protected debugSession: MI2DebugSession;
+	constructor(currentSpace:string,debugSession:MI2DebugSession){
+		this.debugSession=debugSession;
+		this.spaces=[];
+		this.spaces.push(new AddressSpace(currentSpace,[]));
+		this.currentSpaceName=currentSpace;
+	}
+	public pathToSpaceName(path:string){
+		if(path.includes("rCore-Tutorial-v3/os/src")){
+			return 'kernel';
+		}
+		else{
+			let s = path.split('/');
+			//example:src/trap/mod.rs
+			return s[s.length-3]+'/'+s[s.length-2]+'/'+s[s.length-1];
+		}
+	}
+	public updateCurrentSpace(updateTo:string){
+		let newIndex = -1;
+		for(let i=0;i<this.spaces.length;i++){
+			if (this.spaces[i].name===updateTo){
+				newIndex=i;
+			}
+		}
+		if(newIndex===-1){
+			this.spaces.push(new AddressSpace(updateTo,[]));
+			newIndex=this.spaces.length-1;
+		}
+		let oldIndex = -1;
+		for(let j=0;j<this.spaces.length;j++){
+			if(this.spaces[j].name===this.currentSpaceName){
+				oldIndex=j;
+			}
+		}
+		if(oldIndex===-1){
+			this.spaces.push(new AddressSpace(this.currentSpaceName,[]));
+			oldIndex=this.spaces.length-1;
+		}
+		this.spaces[oldIndex].setBreakpointsArguments.forEach(e=>{
+			this.debugSession.miDebugger.clearBreakPoints(e.source.path)
+		});
+		this.spaces[newIndex].setBreakpointsArguments.forEach(args=>{
+			this.debugSession.miDebugger.clearBreakPoints(args.source.path).then(() => {
+				let path = args.source.path;
+				if (this.debugSession.isSSH) {
+					// convert local path to ssh path
+					path = this.debugSession.sourceFileMap.toRemotePath(path);
+				}
+				const all = args.breakpoints.map(brk => {
+					return this.debugSession.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
+				});
+			}, msg => {
+				//TODO
+			});
+		});
+		this.currentSpaceName=this.spaces[newIndex].name;
+	}
+	public getCurrentSpaceName(){
+		return this.currentSpaceName;
+	}
+	public saveBreakpointsToSpace(args:DebugProtocol.SetBreakpointsArguments,spaceName: string){
+		let found = -1;
+		for(let i=0;i<this.spaces.length;i++){
+			if (this.spaces[i].name===spaceName){
+				found=i;
+			}
+		}
+		if(found===-1){
+			this.spaces.push(new AddressSpace(spaceName,[]));
+			found=this.spaces.length-1;
+		}
+		let alreadyThere=-1;
+		for(let i=0;i<this.spaces[found].setBreakpointsArguments.length;i++){
+			if(this.spaces[found].setBreakpointsArguments[i].source.path===args.source.path){
+				this.spaces[found].setBreakpointsArguments[i]=args;
+				alreadyThere=i;
+			}	
+		}
+		if(alreadyThere===-1){
+			this.spaces[found].setBreakpointsArguments.push(args);
+		}
+		
+	}
+	public removeAllBreakpoints(){
+		this.spaces=[];
+	}
+	public status(){
+		return JSON.stringify({
+			current:this.currentSpaceName,
+			spaces:this.spaces
+		});
+	}
+
+}
+
 export class MI2DebugSession extends DebugSession {
 	protected variableHandles = new Handles<VariableScope | string | VariableObject | ExtendedVariable>();
 	protected variableHandlesReverse: { [id: string]: number } = {};
@@ -41,14 +150,15 @@ export class MI2DebugSession extends DebugSession {
 	protected attached: boolean;
 	protected initialRunCommand: RunCommand;
 	protected stopAtEntry: boolean | string;
-	protected isSSH: boolean;
-	protected sourceFileMap: SourceFileMap;
+	public isSSH: boolean;
+	public sourceFileMap: SourceFileMap;
 	protected started: boolean;
 	protected crashed: boolean;
-	protected miDebugger: MI2;
+	public miDebugger: MI2;
 	protected commandServer: net.Server;
 	protected serverPath: string;
 	protected running: boolean = false;
+	protected addressSpaces=new AddressSpaces('kernel',this);//for rCore
 
 	public constructor(debuggerLinesStartAt1: boolean, isServer: boolean = false) {
 		super(debuggerLinesStartAt1, isServer);
@@ -136,25 +246,25 @@ export class MI2DebugSession extends DebugSession {
 	}
 
 /*
-GDB -> App: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done","results":[["threads",[[["id","1"],["target-id","Thread 1.1"],["details","CPU#0 [running]"],["frame",[["level","0"],["addr","0x0000000000010156"],["func","initproc::main"],["args",[]],["file","src/bin/initproc.rs"],["fullname","/home/czy/rCore-Tutorial-v3/user/src/bin/initproc.rs"],["line","13"],["arch","riscv:rv64"]]],["state","stopped"]]]],["current-thread-id","1"]]}}
-
+example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done","results":[["threads",[[["id","1"],["target-id","Thread 1.1"],["details","CPU#0 [running]"],["frame",[["level","0"],["addr","0x0000000000010156"],["func","initproc::main"],["args",[]],["file","src/bin/initproc.rs"],["fullname","/home/czy/rCore-Tutorial-v3/user/src/bin/initproc.rs"],["line","13"],["arch","riscv:rv64"]]],["state","stopped"]]]],["current-thread-id","1"]]}}
 */
-//TODO czy messy logic
-//software engineering principles
 protected handleBreakpoint(info: MINode) {
 	const event = new StoppedEvent("breakpoint", parseInt(info.record("thread-id")));
 	(event as DebugProtocol.StoppedEvent).body.allThreadsStopped = info.record("stopped-threads") == "all";
 	this.sendEvent(event);
-	this.sendEvent({ event: "info", body: info } as DebugProtocol.Event);
-	if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" && info.outOfBandRecord[0].output[3][1][5][1] === '135') {
-		this.sendEvent({ event: "inUser" } as DebugProtocol.Event);
+	//this.sendEvent({ event: "info", body: info } as DebugProtocol.Event);
+	//TODO only for rCore currently
+	if (this.addressSpaces.pathToSpaceName(info.outOfBandRecord[0].output[3][1][4][1])==='kernel'){
+		this.addressSpaces.updateCurrentSpace('kernel');
+		this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
+		if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" && info.outOfBandRecord[0].output[3][1][5][1] === '135') {
+			this.sendEvent({ event: "kernelToUserBorder" } as DebugProtocol.Event);
+		}
 	}
-	else if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" &&
-		info.outOfBandRecord[0].output[3][1][5][1] === '65') {
-		this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
-	}// MUST use else if
-	else if (info.outOfBandRecord[0].output[3][1][4][1].includes("rCore-Tutorial-v3/os")){
-		this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
+	else{
+		let userProgramName = this.addressSpaces.pathToSpaceName(info.outOfBandRecord[0].output[3][1][4][1])
+		this.addressSpaces.updateCurrentSpace(userProgramName);
+		this.sendEvent({ event: "inUser",body:{userProgramName:userProgramName} } as DebugProtocol.Event);
 	}
 
 
@@ -263,7 +373,7 @@ protected handleBreakpoint(info: MINode) {
 			this.sendErrorResponse(response, 10, msg.toString());
 		});
 	}
-
+	//以文件为单位
 	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
 		this.miDebugger.clearBreakPoints(args.source.path).then(() => {
 			let path = args.source.path;
@@ -271,6 +381,15 @@ protected handleBreakpoint(info: MINode) {
 				// convert local path to ssh path
 				path = this.sourceFileMap.toRemotePath(path);
 			}
+			let spaceName = this.addressSpaces.pathToSpaceName(path);
+			if (spaceName!==this.addressSpaces.getCurrentSpaceName()){// TODO rules can be set by user
+				this.sendErrorResponse(response, 9, "Breakpoints Not in Current Address Space. \nPath is "+path);
+				this.addressSpaces.saveBreakpointsToSpace(args,spaceName);
+				return ;
+			}else{
+				this.addressSpaces.saveBreakpointsToSpace(args,spaceName);
+			}
+			
 			const all = args.breakpoints.map(brk => {
 				return this.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
 			});
@@ -850,6 +969,7 @@ protected handleBreakpoint(info: MINode) {
 			case "setKernelOutBreakpoints"://out only
 				break;
 			case "removeAllCliBreakpoints":
+				this.addressSpaces.removeAllBreakpoints();
 				this.miDebugger.sendCliCommand("del");
 				break;
 			//TODO 改掉自动断点切换的逻辑
@@ -865,13 +985,11 @@ protected handleBreakpoint(info: MINode) {
 				}
 				break;
 			case "listBreakpoints":
-				this.miDebugger.sendCliCommand("info breakpoints").then(
-					(data)=>{
-						this.sendEvent({ event: "listBreakpoints", body: { data: JSON.stringify(data) } } as DebugProtocol.Event);
-					}
-				);
+				this.sendEvent({ event: "listBreakpoints", body: { data:this.addressSpaces.status() } } as DebugProtocol.Event);
 				this.sendResponse(response);
 				break;
+			case "updateCurrentSpace":
+				this.addressSpaces.updateCurrentSpace(args);
 			default:
 				return this.sendResponse(response);
 		}

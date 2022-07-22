@@ -195,8 +195,8 @@ Ctrl+Shift+P memory
 TODO MemState 代码可以删掉
 #### 断点组的切换
 DONE on:breakpointModified(TODO), stopped => updateWebviewBreakpointsInfo
-TODO on:brealpointFailed(TODO)=> vscode:nothing（根本不要去管。vscode就是故意这么设计的，编辑器和DA的断点是分离的，DA不能控制编辑器的断点。见https://stackoverflow.com/questions/55364690/is-it-possible-to-programmatically-set-breakpoints-with-a-visual-studio-code-ext）, DA:save to WebView
-TODO on:spaceStateChanged(TODO) => DA:revive breakpoints
+DONE on:setBreakpoint--filter--notCurrentSpace=> DA:save ,vscode:nothing（根本不要去管。vscode就是故意这么设计的，编辑器和DA的断点是分离的，DA不能控制编辑器的断点。见https://stackoverflow.com/questions/55364690/is-it-possible-to-programmatically-set-breakpoints-with-a-visual-studio-code-ext）, 
+DONE on:spaceStateChanged(TODO) => DA:revive breakpoints
 TODO: 以上三行写成汉字。这样做的话，程序设置的断点没法在vscode原生widget里出现。不过无所谓了，反正自己的webview里能看见。
 ### 暂不可跟踪
 #### Self变量
@@ -222,6 +222,14 @@ extension.ts => handle stopped-events --> WebView
 ### multiple debug file support
 vscode.debug.activeDebugSession?.customRequest("addDebugFile
 fix memState
+
+### send gdb command
+with filter: addBreakpoints Request
+without filter: sendCliCommand
+
+### TODO boarder---file
+在边界时如需自动切换符号文件，那么需要知道切换到哪个用户态程序。但是，我们只有在用户态程序的断点被触发之后，才能知道切换到哪个用户态程序。所以我建议这个功能不做了，改成用户手动设置符号表文件，想看哪个用户态程序就加载哪个用户态程序的符号表文件。
+在现在版本的代码中，仍然自动切换到initproc。
 
 ## 开发记录和知识库
 
