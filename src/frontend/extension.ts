@@ -17,9 +17,9 @@ import {startupCmd} from "./fakeMakefile"
 export function activate(context: vscode.ExtensionContext) {
 	let NEXT_TERM_ID = 1;
 	context.subscriptions.push(vscode.commands.registerCommand('core-debugger.launchCoreDebugger', () => {
-		vscode.commands.executeCommand("core-debugger.startPanel");
-		const terminal = vscode.window.createTerminal(`CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`);
-		terminal.sendText(startupCmd);
+		vscode.commands.executeCommand("core-debugger.startPanel");//当启动插件时
+		const terminal = vscode.window.createTerminal(`CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`);//创建新终端
+		terminal.sendText(startupCmd);//启动qemu
 		vscode.commands.executeCommand("workbench.action.debug.start");
 	}));
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("debugmemory", new MemoryContentProvider()));
@@ -47,7 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
 	let webviewMemState = [{ from: 0x80200000, length: 16 }, { from: 0x80201000, length: 32 }];
 	let kernelInOutBreakpointArgs=1;
-	let userDebugFile = 'initproc';
+	let userDebugFile = 'initproc';//可以修改为其它用户程序名，如matrix
 	//========================================================================================
 
 
@@ -65,6 +65,7 @@ export function activate(context: vscode.ExtensionContext) {
 			);
 			// And set its HTML content
 			currentPanel.webview.html = getWebviewContent("loading reg names", "loading reg values");
+			//处理从WebView中传递出的消息
 			currentPanel.webview.onDidReceiveMessage(
 				message => {
 					// vscode.window.showErrorMessage("message");
@@ -72,9 +73,9 @@ export function activate(context: vscode.ExtensionContext) {
 						webviewMemState = message.memRangeQuery;
 					}
 					if (message.removeDebugFile) {
-						//TODO save current breakpoints
-						//TODO support multiple debug files of user programs
+						//自定义请求.customRequest函数见/src/mibase.ts
 						vscode.debug.activeDebugSession?.customRequest("removeDebugFile", { debugFilepath: os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/initproc" });
+						//弹出窗口
 						vscode.window.showInformationMessage("symbol file `initproc` removed");
 					}
 					if(message.setKernelInOutBreakpoints){
@@ -105,30 +106,33 @@ export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
 		createDebugAdapterTracker() {
 			return {
+				//监听VSCode即将发送给Debug Adapter的消息
 				onWillReceiveMessage:(message)=>{
 					//console.log("//////////RECEIVED FROM EDITOR///////////\n "+JSON.stringify(message)+"\n//////////////////\n ");
 					
 				},
 				onWillStartSession: () => { console.log("session started") },
+				//监听Debug Adapter发送给VSCode的消息
 				onDidSendMessage: (message) => {
 					//console.log("//////////MESSAGE///////////\n "+JSON.stringify(message)+"\n//////////////////\n ");
 					//TODO use switch case
-					if (message.command === "setBreakpoints"){
+					if (message.command === "setBreakpoints"){//如果Debug Adapter设置了一个断点
 						vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
 					}
 					if (message.type === "event") {
-						//stopped之后的处理
-						if (message.event === "stopped") {//czy move this section to mi2.ts later
+						//如果（因为断点等）停下
+						if (message.event === "stopped") {
 							//console.log("webview should update now. sending eventTest");
 							vscode.debug.activeDebugSession?.customRequest("eventTest");
 							//console.log("evenTest sent. Requesting registersNamesRequest and registersValuesRequest. ")
+							//请求寄存器信息
 							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
 							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
-							//console.log("registersNamesRequest and registersValuesRequest sent. events will come later.");
+							//请求内存数据
 							webviewMemState.forEach(element => {
 								vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
 							});
-							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
+							//更新WebView中的断点信息
 							vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
 							
 						}//处理自定义事件
@@ -136,26 +140,17 @@ export function activate(context: vscode.ExtensionContext) {
 							//console.log("Extension Received eventTest");
 						}
 						else if (message.event === "updateRegistersValuesEvent") {
-							//console.log("Extension Received updateRegistersValuesEvent");
+							//向WebView传递消息
 							currentPanel.webview.postMessage({ regValues: message.body });
-							// currentPanel.webview.html=getWebviewContent( "todo",JSON.stringify(message.body));
-							//console.log(message.body);
 						}
 						else if (message.event === "updateRegistersNamesEvent") {
-							//console.log("Extension Received updateRegistersNamesEvent");
 							currentPanel.webview.postMessage({ regNames: message.body });
-							//console.log(message.body);
-						}
-						else if (message.event === "messagesByEvent") {
-							//console.log("Extension Just Received a messagesByEvent");
 						}
 						else if (message.event === "memValues") {
-							//console.log("Extension Just Received a memValues Event");
 							currentPanel.webview.postMessage({ memValues: message.body });
-							//console.log(message.body);
 						}
+						//到达内核态->用户态的边界
 						else if (message.event === "kernelToUserBorder") {
-							//TODO save current breakpoints and webviewMemState
 							webviewMemState = [];//TODO applyMemStateSet
 							// removeAllCliBreakpoints();
 							vscode.window.showInformationMessage("switched to "+userDebugFile+" breakpoints");
@@ -165,11 +160,11 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.window.showInformationMessage("All breakpoints removed. Symbol file "+userDebugFile+" added. Now you can set user program breakpoints.  line 13 println!(\"aaaaa... recommemded if it's initproc.rs");
 							console.log("/////////////////////////kernelToUserBorder///////////////////");
 						}
+						//当前在内核态
 						else if (message.event === "inKernel") {
 							currentPanel.webview.postMessage({ inKernel: true });
 							//removeAllCliBreakpoints();
 							vscode.window.showInformationMessage("switched to kernel breakpoints");
-							vscode.debug.activeDebugSession?.customRequest("applyBreakpointSet","kernel");//so user program shouldn't be called kernel
 							console.log("/////////////////////////INKERNEL///////////////////");
 						}
 						else if (message.event === "info") {
@@ -191,32 +186,6 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 	});
-
-
-
-
-	/* NOT WORKING
-		context.subscriptions.push(vscode.debug.onDidReceiveDebugSessionCustomEvent((customEvent) => {
-			/// czy TODO filters: if event ok then =>
-			/// not care about event. just to know something happened.
-			/// better way: 
-			/// currentPanel.webview.postMessage(getDebugPanelInfo(customEvent));
-			console.log("Extension Received Custom Command");
-	
-			if(customEvent.event==="eventTest"){
-	
-			// currentPanel.webview.html=getWebviewContent(getDebugPanelInfo());
-			
-	
-			// violent way: currentPanel.webview.html=getDebugPanelInfo(customEvent).toString();
-			}
-			else{
-				currentPanel.webview.html=getWebviewContent( JSON.stringify(customEvent.body));
-			}
-			
-		}));
-	*/
-
 }
 
 const memoryLocationRegex = /^0x[0-9a-f]+$/;
@@ -365,6 +334,7 @@ function center(str: string, width: number): string {
 	}
 	return str;
 }
+//WebView HTML
 function getWebviewContent(regNames?: string, regValues?: string) {
 	return `<!DOCTYPE html>
 	<html lang="en">

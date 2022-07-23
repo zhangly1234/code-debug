@@ -43,7 +43,7 @@ class AddressSpace {
 		this.setBreakpointsArguments=setBreakpointsArguments;
 	}
 }
-
+//负责断点缓存，转换等
 class AddressSpaces{
 	protected spaces:AddressSpace[];
 	protected currentSpaceName:string;
@@ -54,7 +54,8 @@ class AddressSpaces{
 		this.spaces.push(new AddressSpace(currentSpace,[]));
 		this.currentSpaceName=currentSpace;
 	}
-
+	///此函数将文件目录转换为空间名，
+	///如src/bin/initproc.rs=>‘src/bin/initproc.rs‘空间，src/trap/mod.rs=>‘kernel‘空间
 	///规则应交给用户决定。由于gdb断点的path只包含往上两级父目录名，
 	///比较完美的做法是，开始debug之前扫描一遍文件系统，让用户决定哪些文件属于kernel这个space。
 	///此处是一个权宜之计，对于当前版本的rCore刚好能用。
@@ -68,6 +69,7 @@ class AddressSpaces{
 			return 'kernel';
 		}
 	}
+	//将当前空间的断点清除（缓存不清除）
 	public disableCurrentSpaceBreakpoints(){
 		let currentIndex = -1;
 		for(let j=0;j<this.spaces.length;j++){
@@ -84,14 +86,11 @@ class AddressSpaces{
 			this.debugSession.miDebugger.clearBreakPoints(e.source.path);
 			this.debugSession.sendEvent({event:"showInformationMessage",body:"disableCurrentSpaceBreakpoints successed. index= "+currentIndex} as DebugProtocol.Event);
 		});
-		/*
-		this.spaces[oldIndex].setBreakpointsArguments.forEach(e=>{
-			this.debugSession.miDebugger.clearBreakPoints(e.source.path)
-		});
-		*/
 
 	}
 	//功能和disableCurrentSpaceBreakpoints有重合。可考虑精简代码
+	//断点被触发时会调用该函数。如果空间发生变化（如kernel=>'src/bin/initproc.rs'）
+	//缓存旧空间的断点，清除旧空间的断点，加载新空间的断点
 	public updateCurrentSpace(updateTo:string){
 		let newIndex = -1;
 		for(let i=0;i<this.spaces.length;i++){
@@ -135,6 +134,7 @@ class AddressSpaces{
 	public getCurrentSpaceName(){
 		return this.currentSpaceName;
 	}
+	///当设置一新断点时会调用该函数。将断点信息保存到对应的空间中。
 	public saveBreakpointsToSpace(args:DebugProtocol.SetBreakpointsArguments,spaceName: string){
 		let found = -1;
 		for(let i=0;i<this.spaces.length;i++){
@@ -158,6 +158,7 @@ class AddressSpaces{
 		}
 		
 	}
+	///仅用于reset
 	public removeAllBreakpoints(){
 		this.spaces=[];
 	}
@@ -170,6 +171,7 @@ class AddressSpaces{
 
 }
 
+/// Debug Adapter
 export class MI2DebugSession extends DebugSession {
 	protected variableHandles = new Handles<VariableScope | string | VariableObject | ExtendedVariable>();
 	protected variableHandlesReverse: { [id: string]: number } = {};
@@ -402,14 +404,16 @@ protected handleBreakpoint(info: MINode) {
 			this.sendErrorResponse(response, 10, msg.toString());
 		});
 	}
-	//以文件为单位
+	//设置某一个文件的所有断点
 	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
-		this.miDebugger.clearBreakPoints(args.source.path).then(() => {
+		this.miDebugger.clearBreakPoints(args.source.path).then(() => { //清空该文件的断点
 			let path = args.source.path;
 			if (this.isSSH) {
 				// convert local path to ssh path
 				path = this.sourceFileMap.toRemotePath(path);
 			}
+			//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），
+			//暂时不通知GDB设置断点
 			let spaceName = this.addressSpaces.pathToSpaceName(path);
 			if (spaceName!==this.addressSpaces.getCurrentSpaceName()){// TODO rules can be set by user
 				this.sendEvent({event:"showInformationMessage",body:"Breakpoints Not in Current Address Space. Saved"} as DebugProtocol.Event);
@@ -948,21 +952,8 @@ protected handleBreakpoint(info: MINode) {
 			this.sourceFileMap = new SourceFileMap(configMap);
 		}
 	}
-
-	/*protected customRequest(command: string, response: DebugProtocol.Response, args: any, request?: DebugProtocol.Request): void {
-		console.log("I'm At Request Router\n\n\n\n\n\n\n\n\n");
-		if (command === "registersRequest"){
-			this.registersRequest(response,args);
-		}
-		else if (command === "envokeUpdateDebugWebviewEvent"){
-			console.log("GONNA SEND ENVOKE\n\n\n\n\n");
-			this.sendEvent( { event: "customEvent", body: ["testsRoot"] } as DebugProtocol.Event);
-		}
-	}*/
-
-
+	///返回消息可以用Event或者Response。用Response更规范，用Event代码更简单。
 	protected customRequest(command: string, response: DebugProtocol.Response, args: any): void {
-		console.log("IN DA");
 		switch (command) {
 			case "registersValuesRequest":
 				this.registersValuesRequest(response, {});
@@ -1002,18 +993,7 @@ protected handleBreakpoint(info: MINode) {
 				this.miDebugger.sendCliCommand("del");
 				this.customRequest("listBreakpoints",{} as DebugAdapter.Response,{});
 				break;
-			//TODO 改掉自动断点切换的逻辑
-			//TODO link to WebView
-			case "applyBreakpointSet":
-				console.log("applyBreakpointSet triggered");
-				if(args==='kernel'){
-					//this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/trap/mod.rs"} as DebugProtocol.Source,breakpoints:[{line:135},{line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
-					
-				}
-				if(args==='initproc'){
-					//this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/bin/initproc.rs"} as DebugProtocol.Source,breakpoints:[{line:13}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
-				}
-				break;
+			////更新WebView的断点信息
 			case "listBreakpoints":
 				this.sendEvent({ event: "listBreakpoints", body: { data:this.addressSpaces.status() } } as DebugProtocol.Event);
 				this.sendResponse(response);

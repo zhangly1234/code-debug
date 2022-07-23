@@ -25,46 +25,207 @@ VS Code基于Debug Adapter 协议，实现了一个原生的，非语言相关�
 QEMU 支持通过远程连接工具访问 QEMU 中的 gdbserver。 这允许以与在真实硬件上使用 JTAG 等低级调试工具相同的方式调试客户代码。 可以停止和启动虚拟机，检查寄存器和内存等状态，并设置断点和观察点。
 ## 调试工具设计
 ### 整体架构设计
+如下图所示，本调试工具主要分为以下几个模块：
 
-![Debugger插件整体架构设计](./docs/imgs/arch.png)
+### WebView
+在VSCode已有的原生UI之外，本项目通过VSCode提供的WebView，创建一个网页提供更丰富的用户交互界面。用户界面有如下信息显示窗口：
+
+| 名称 	| 功能 	| 更新策略 	|  	|  	|
+|---	|---	|---	|---	|---	|
+| 寄存器信息 	| 显示寄存器名及寄存器值 	| 触发断点或暂停时更新 	|  	|  	|
+| 特权级信息 	| 显示当前特权级 	| 触发断点或暂停时更新 	|  	|  	|
+| 内存信息 	| 显示指定位置和长度的内存信息，可增删 	| 触发断点、暂停、用户修改请求的内存信息时更新 	|  	|  	|
+| 断点信息 	| 显示当前设置的断点以及暂未设置的，缓存的其他内存空间下的断点（比如在内核态时某用户程序的断点） 	| 触发断点或暂停时更新 	|  	|  	|
+
+用户界面有如下功能按钮：
+| 名称 	| 功能 	|  	|  	|  	|
+|---	|---	|---	|---	|---	|
+| removeDebugFile 	| 去除调试信息文件 	|  	|  	|  	|
+| setKernelInOutBreakpoints 	| 设置内核态到用户态，用户态到内核态的边界处的断点 	|  	|  	|  	|
+| removeAllCliBreakpoints 	| 重置按钮。清空编辑器，Debug Adapter, GDB中所有断点信息 	|  	|  	|  	|
+| disableCurrentSpaceBreakpoints 	| 令GDB清除当前设置的断点且不更改Debug Adapter中的断点信息 	|  	|  	|  	|
+| updateAllSpacesBreakpointsInfo 	| 手动更新断点信息表格 	|  	|  	|  	|
 
 
+WebView和插件进程互相传递消息。具体见src/frontend/extension.ts。
+### 插件进程
+见见src/frontend/extension.ts。插件进程发送Requests(包括customRequest)给Debug Adapter并接收Debug Adapter发送的Response和Events
 ### Debug Adapter
 
-本项目使用一个独立进程作为Debug Adapter连接VSCode与qemu的gdbstub。
+本项目使用一个独立进程作为Debug Adapter。本项目主要增加了涉及操作系统调试的处理流程。
+见src/mibase.ts
 
-#### 消息传递流程
-![Debug Adapter](./docs/imgs/DebugAdapter.png)
-该流程遵守Debug Adapter 协议。该协议主要规定了一下三类消息的结构和处理流程：
+### 涉及操作系统调试的处理流程
+#### 消息类型
+
+根据Debug Adapter 协议。本项目主要使用以下三个传递信息的途径：
 
 - Requests：各类消息请求的格式。本项目通过其中的CustomRequests扩展了一些操作系统调试相关的请求。
-- Response：对于Requests的回应。
-- Events：Debug Adapter事件。本项目新增的异步请求通过Events返回数据。
+- Response：对于Requests的响应。
+- Events：Debug Adapter事件。Events和Response都能向插件进程返回数据。
+#### 当前特权级检测
+RISC-V处理器没有寄存器可以透露当前的特权级，因此本项目在内核代码中，内核态进入用户态以及用户态返回内核态处各设置一个断点，断点被触发时更新特权级信息。
+此外再辅以当前执行的代码的文件名，内存地址空间等手段判断当前的特权级。
+#### 特权级变化时的处理
+##### 切换断点
+如果同时令GDB设置内核态和用户态代码的断点，会导致这些断点全部失效（推测是因为执行sfence.vma指令之后，TLB刷新成用户进程的页表，导致内核地址空间的断点无法被设置）。因此，rCore运行在内核态时GDB只能设置内核态的断点，用户态同理。本项目为了方便用户进行用户态程序的调试，跟踪系统调用，如果用户在内核态时设置了用户态的断点，这个断点的信息会被存储在Debug Adapter中，特权级发生变化时自动令GDB删除旧断点，并设置之前缓存下来的断点。
+在Debug Adapter中，断点被分为很多组，根据不同情况可以切换不同组的断点。
+##### 切换符号表
+特权级切换时自动切换到对应的用户态程序的符号表文件。
+具体见src/mibase.ts
+
+
 
 ### GDB/MI Interface
 
-GDB/MI是GDB面向机器的、基于行的文本接口。它用于支持将调试器作为Debugger插件的一个小模块来使用的系统开发。本项目通过`MIDebugger.sendCliCommand()`方法将用户请求（Debug Adapter Requests）转换为符合GDB/MI接口规范的文本并发送给GDB进程。
+GDB/MI是GDB面向机器的、基于行的文本接口。它用于支持将调试器作为Debugger插件的一个小模块来使用的系统开发。本项目将用户请求（Debug Adapter Requests）转换为符合GDB/MI接口规范的文本并通过管道发送给GDB进程。GDB进程同样返回符合GDB/MI接口规范的文本数据。
 
-### 调试操作系统相关的功能
-通过扩展Debug Adapter协议及其实现，使得调试器插件支持操作系统相关的调试功能
-#### 特权级切换
-调试器应能检测到特权级的切换并同步切换符号文件和断点。
-### 用户界面
 
-在VSCode已有的原生UI之外，本项目通过VSCode提供的WebView类，创建一个网页提供更丰富的用户交互界面。信息通过Node事件传入网页，通过函数调用输出至Debugger插件。
+### GDB和Qemu虚拟机
+Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub功能，该功能开启一个gdbserver，本地的gdb通过tcp协议连接gdbserver
+
+
 
 
 ## 调试工具实现
+常用API如下：
+![](./docs/imgs/new-Coredebugger-APIs.png)
 编写代码时，我主要关注以下调试信息的处理流程：
-![](./docs/imgs/text.png)
 
 ### 关键的寄存器和内存的数据获取
+1. `stopped`事件发生时，通过customRequest请求Debug Adapter返回寄存器信息,内存数据
+```javascript
+    //extension.ts
+    //...
+    if (message.type === "event") {
+        //如果（因为断点等）停下
+        if (message.event === "stopped") {
 
-![](./docs/imgs/messageFlow.png)
-csr等非通用寄存器也能看
-### 断点检测
+            //请求寄存器信息
+            vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
+            vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
 
-触发部分断点时，调试插件需要提特权级信息的更新。通过截获Debug Adapter触发的事件可以分析出当前触发的断点的行号和文件名。
+            //请求内存数据
+            webviewMemState.forEach(element => {
+                vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
+            });
+            //更新WebView中的断点信息
+            vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+        }
+    //...
+```
+
+2. Debug Adapter响应这些请求(见src/mibase.ts/-MI2DebugSession-customRequest)并返回Responses和Events
+
+3. 插件进程接收并解析Responses和Events，将信息传递到WebView
+```javascript
+    //extension.ts
+    //处理customRequest
+    else if (message.event === "updateRegistersValuesEvent") {
+        //向WebView传递消息
+        currentPanel.webview.postMessage({ regValues: message.body });
+    }
+    else if (message.event === "updateRegistersNamesEvent") {
+        currentPanel.webview.postMessage({ regNames: message.body });
+    }
+    //...
+```
+4. WebView收到信息，更新网页
+```javascript
+    //extension.ts-getWebviewContent()
+    window.addEventListener('message', event => {//接受消息
+            const message = event.data; // The JSON data our extension sent
+            if(message.regValues){//如果是寄存器值信息
+                //更新网页
+                document.getElementById('regTable').innerHTML="";
+                document.getElementById('regTable').innerHTML+=JSON.stringify(message.regValues);
+            //...
+            }
+```
+### 断点检测与切换
+1. 当增删断点或`stopped`事件发生时，向Debug Adapter请求当前所有的断点信息（以及哪些断点被设置，哪些被缓存）
+```javascript
+    //extension,ts
+    onDidSendMessage: (message) => {
+        if (message.command === "setBreakpoints"){//如果Debug Adapter设置了一个断点
+            //更新WebView中的断点信息
+            vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+        }
+        if (message.type === "event") {
+            //...
+            //如果（因为断点等）停下
+            if (message.event === "stopped") {
+                //更新WebView中的断点信息
+                vscode.debug.activeDebugSession?.customRequest("listBreakpoints");   
+            }
+    //...
+```
+2. 当用户设置新断点时，判断这个断点能否在当下就设置，若否,则保存（VSCode编辑器和DA的断点是分离的，Debug Adapter不能控制编辑器的断点，故采用这种设计。见[此](https://stackoverflow.com/questions/55364690/is-it-possible-to-programmatically-set-breakpoints-with-a-visual-studio-code-ext)）
+```javascript
+//src/mibase.ts-MI2DebugSession-setBreakPointsRequest
+	//设置某一个文件的所有断点
+	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
+		this.miDebugger.clearBreakPoints(args.source.path).then(() => { //清空该文件的断点
+            //...
+			//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），
+			//就暂时不通知GDB设置断点
+			let spaceName = this.addressSpaces.pathToSpaceName(path);
+			if (spaceName!==this.addressSpaces.getCurrentSpaceName()){
+                //弹出提示窗口
+				this.sendEvent({event:"showInformationMessage",body:"Breakpoints Not in Current Address Space. Saved"} as DebugProtocol.Event);
+                //保存断点信息
+				this.addressSpaces.saveBreakpointsToSpace(args,spaceName);
+				return ;
+			}else{//如果这个断点在当前地址空间内，那么保存断点信息并设置断点
+				this.addressSpaces.saveBreakpointsToSpace(args,spaceName);
+			}
+			
+			const all = args.breakpoints.map(brk => {
+                //令GDB设置断点
+				return this.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
+			});
+			//...
+        //更新断点信息
+		this.customRequest("listBreakpoints",{} as DebugAdapter.Response,{});
+	}
+
+```
+
+3. 当断点组切换（比如从内核态进到用户态），令GDB移除旧断点（断点信息仍然保存在`MIDebugSession.AddressSpaces.spaces`中），设置新断点。见`src/mibase.ts-AddressSpaces-updateCurrentSpace`。
+
+### 到达内核边界时的处理
+
+1. 触发断点时，检测这个断点是否是内核边界的断点。
+```javascript
+    //src/mibase.ts 
+    protected handleBreakpoint(info: MINode) {
+        //...
+        if (this.addressSpaces.pathToSpaceName(info.outOfBandRecord[0].output[3][1][4][1])==='kernel'){//如果是内核即将trap入用户态处的断点
+            this.addressSpaces.updateCurrentSpace('kernel');
+            this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
+            if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" && info.outOfBandRecord[0].output[3][1][5][1] === '135') {
+                this.sendEvent({ event: "kernelToUserBorder" } as DebugProtocol.Event);//发送event
+            }
+        }
+        //...
+    }
+```
+2. 若是，添加符号表文件，移除当前所有断点，加载用户态程序的断点，更新WebView信息。
+```javascript
+    //src/frontend/extension.ts
+    //接收event
+    //到达内核态->用户态的边界
+    else if (message.event === "kernelToUserBorder") {
+        //...
+        //添加用户态程序的符号表文件
+        vscode.debug.activeDebugSession?.customRequest("addDebugFile", { debugFilepath: os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/"+userDebugFile });
+        //更新断点组
+        vscode.debug.activeDebugSession?.customRequest("updateCurrentSpace","src/bin/"+userDebugFile+".rs");
+        //向WebView发送更新信息
+        currentPanel.webview.postMessage({ kernelToUserBorder: true });
+        //...
+    }
+```
 
 ### 符号信息的获取
 #### 编译
@@ -72,42 +233,10 @@ csr等非通用寄存器也能看
 #### rCore的修改
 rCore-Tutorial为了提升性能，在用户程序链接脚本`linker.ld`里面discard了`.debug_info`等段，修改链接脚本可以让链接器不忽略这些调试信息段。但这导致easy-fs的崩溃和栈溢出，故还需将easy-fs-fuse打包程序的磁盘大小，和栈空间改大。此外，user/目录要先 make clean 再编译，修改过的linkerscript才会生效。
 
-### 扩展DAP协议
-Debug Adapter 协议提供了`customRequest`,从而支持扩展协议内容。
-扩展的协议内容如下：
-#### 请求
-寄存器请求
-清除断点请求
-
-#### 事件
-特权级切换
-
-### 获取特权级信息
-
-risc-v处理器没有直接显示当前特权级的寄存器，故通过在代码中用户程序trap进入内核，和内核切换到用户程序二处设置断点，断点被出发时更新特权级信息。
-
 ### 界面美化
 
 运用bootstrap等前端技术，提供对用户更加友好的图形界面：
 ![coredebugger-screenshot-bootstrap-mid](./docs/imgs/coredebugger-screenshot-bootstrap-mid.png)
-### 特权级切换
-#### 特权级的检测方法
-在即将进入和离开内核处设置断点
-#### gdb bug 不能在...设断点 => 流程
-#### 断点上下文 
-推测是执行sfence.vma之后，TLB刷新成用户进程的页表，导致内核地址空间的断点无法被设置。
-#### 符号文件的切换
-`add-file`
-
-#### Debug APIs
-
-本项目调用了一些VSCode API实现部分常用流程的自动化，例如自动删除断点、切换调试信息文件等。
-
-#### UI(前端页面)
-
-### 性能测试与分析
-
-
 
 ## 总结与展望
 
@@ -124,6 +253,7 @@ risc-v处理器没有直接显示当前特权级的寄存器，故通过在代�
 
 todos:
 - 支持展示更多内核数据结构
+- 在边界时如需自动切换符号文件，那么需要知道切换到哪个用户态程序。但是，我们只有在用户态程序的断点被触发之后，才能知道切换到哪个用户态程序。所以我建议这个功能不做了，改成用户手动设置符号表文件，想看哪个用户态程序就加载哪个用户态程序的符号表文件。在现在版本的代码中，仍然自动切换到initproc。
 
 
 ## 安装与使用
@@ -149,6 +279,7 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 1. 按f5启动插件
 1. 修改src/frontend/fakeMakefile.ts里的`PROJECT_PATH`
 1. 创建launch.json（选GDB）（可根据自己需要修改）: 
+1. 确保/src/mibase.ts/-MI2DebugSession-customRequest方法-case setKernelInOutBreakpoints中硬编码的文件名和行数指向rCore代码中内核的出入口
 ```json
 {
     "version": "0.2.0",
@@ -174,13 +305,14 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 ```
 
 ### 使用
-
+1. 在code-debug文件夹下`git pull`更新软件仓库
 1. 在打开的新窗口内`Ctrl+Shift+P`找到并点击`CoreDebugger:Launch Coredebugger`
-1. 清除所有断点
-1. 设置内核入口、出口断点
+1. 清除所有断点（removeAllCliBreakpoints按钮）
+1. 设置内核入口、出口断点（setKernelInOutBreakpoints按钮）
+1. 设置内核代码和用户程序代码的断点（推荐initproc.rs的println!语句）
 1. 按continue按钮开始运行rCore-Tutorial
-1. 当运行到位于内核出口的断点时，插件会自动删除已有断点，此时用户可以设置用户态程序的断点
-1. 在用户态程序中如果想观察内核内的执行流，应先清除所有断点，设置内核入口、出口断点
+1. 当运行到位于内核出口的断点时，插件会自动切换到用户态的断点
+1. 在用户态程序中如果想观察内核内的执行流，应先disableCurrentSpaceBreakpoints，设置内核入口、出口断点（setKernelInOutBreakpoints按钮），再设置内核断点
 
 [视频演示](./docs/imgs/pre_with_sub.mp4)
 ### 功能
@@ -193,11 +325,8 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 #### 直接观测内存
 Ctrl+Shift+P memory
 TODO MemState 代码可以删掉
-#### 断点组的切换
-DONE on:breakpointModified(TODO), stopped => updateWebviewBreakpointsInfo
-DONE on:setBreakpoint--filter--notCurrentSpace=> DA:save ,vscode:nothing（根本不要去管。vscode就是故意这么设计的，编辑器和DA的断点是分离的，DA不能控制编辑器的断点。见https://stackoverflow.com/questions/55364690/is-it-possible-to-programmatically-set-breakpoints-with-a-visual-studio-code-ext）, 
-DONE on:spaceStateChanged(TODO) => DA:revive breakpoints
-TODO: 以上三行写成汉字。这样做的话，程序设置的断点没法在vscode原生widget里出现。不过无所谓了，反正自己的webview里能看见。
+#### 断点组的自动切换
+
 ### 暂不可跟踪
 #### Self变量
 这是gdb的bug，见https://sourceware.org/gdb/onlinedocs/gdb/Rust.html
@@ -211,31 +340,27 @@ Vec和VecDeque的pointer值通过gdb查看是错的（都是0x1,0x2之类的很�
 #### 被内联展开的函数
 
 ## 扩展
-### add
-extension.ts => handle stopped
-mibase.ts => customRequest 
-            -1-->requests 
-            -2-->this.miDebugger.sendCliCommand("add-symbol-file "+args.debugFilepath);
-            -3--> events
-extension.ts => handle stopped-events --> WebView
-### handleBreakpoint()=>inKernel,inUser
-### multiple debug file support
-vscode.debug.activeDebugSession?.customRequest("addDebugFile
-fix memState
+以下列出一些思路，结合[上文](#调试工具实现)，您可以容易地扩充本插件的功能：
+### 一般思路
 
-### send gdb command
-with filter: addBreakpoints Request
-without filter: sendCliCommand
+1. extension.ts => handle stopped
+2. mibase.ts => customRequest 
+    1. -->requests 
+    2. -->`this.miDebugger.sendCliCommand("add-symbol-file "+args.debugFilepath);`
+    3. --> events
+3. extension.ts => handle stopped-events --> WebView
 
-### TODO boarder---file
-在边界时如需自动切换符号文件，那么需要知道切换到哪个用户态程序。但是，我们只有在用户态程序的断点被触发之后，才能知道切换到哪个用户态程序。所以我建议这个功能不做了，改成用户手动设置符号表文件，想看哪个用户态程序就加载哪个用户态程序的符号表文件。
-在现在版本的代码中，仍然自动切换到initproc。
+### Multiple Debug File Support
+1. `vscode.debug.activeDebugSession?.customRequest("addDebugFile`
+2. memState into addressspaces
+3. GDB Command：`add-file`
+### Send GDB Command
+1. with filter: addBreakpoints Request
+2. without filter (brute force): sendCliCommand()
+
 
 ## 开发记录和知识库
 
 [在线版本(观看效果更佳)](https://shimo.im/docs/hRQk6dXkxHp9pR3T)
 
 [（待更新）离线版本](./docs/%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%95%E5%92%8C%E7%9F%A5%E8%AF%86%E5%BA%93.pdf)
-
-
-## 分工与协作
