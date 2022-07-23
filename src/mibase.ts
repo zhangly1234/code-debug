@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import { SourceFileMap } from "./source_file_map";
 import { Address } from 'cluster';
 import { strict } from 'assert';
+import { debugPort } from 'process';
 
 class ExtendedVariable {
 	constructor(public name, public options) {
@@ -53,16 +54,44 @@ class AddressSpaces{
 		this.spaces.push(new AddressSpace(currentSpace,[]));
 		this.currentSpaceName=currentSpace;
 	}
-	public pathToSpaceName(path:string){
-		if(path.includes("rCore-Tutorial-v3/os/src")){
-			return 'kernel';
-		}
-		else{
+
+	///规则应交给用户决定。由于gdb断点的path只包含往上两级父目录名，
+	///比较完美的做法是，开始debug之前扫描一遍文件系统，让用户决定哪些文件属于kernel这个space。
+	///此处是一个权宜之计，对于当前版本的rCore刚好能用。
+	///注意path只要包含src/bin就会被判定为用户程序
+	public pathToSpaceName(path:string):string{
+		if(path.includes("easy-fs/src")||path.includes("user/src")||path.includes("src/bin")){
 			let s = path.split('/');
-			//example:src/trap/mod.rs
 			return s[s.length-3]+'/'+s[s.length-2]+'/'+s[s.length-1];
 		}
+		else{
+			return 'kernel';
+		}
 	}
+	public disableCurrentSpaceBreakpoints(){
+		let currentIndex = -1;
+		for(let j=0;j<this.spaces.length;j++){
+			if(this.spaces[j].name===this.currentSpaceName){
+				currentIndex=j;
+			}
+		}
+		//假设this.spaces内缓存的断点信息和GDB里真实的断点信息完全一致。理论上确实是完全一致的。
+		//未来可以尝试令gdb删除某个文件里的所有断点
+		if(currentIndex===-1){//别写成=
+			return;
+		}
+		this.spaces[currentIndex].setBreakpointsArguments.forEach(e=>{
+			this.debugSession.miDebugger.clearBreakPoints(e.source.path);
+			this.debugSession.sendEvent({event:"showInformationMessage",body:"disableCurrentSpaceBreakpoints successed. index= "+currentIndex} as DebugProtocol.Event);
+		});
+		/*
+		this.spaces[oldIndex].setBreakpointsArguments.forEach(e=>{
+			this.debugSession.miDebugger.clearBreakPoints(e.source.path)
+		});
+		*/
+
+	}
+	//功能和disableCurrentSpaceBreakpoints有重合。可考虑精简代码
 	public updateCurrentSpace(updateTo:string){
 		let newIndex = -1;
 		for(let i=0;i<this.spaces.length;i++){
@@ -383,7 +412,7 @@ protected handleBreakpoint(info: MINode) {
 			}
 			let spaceName = this.addressSpaces.pathToSpaceName(path);
 			if (spaceName!==this.addressSpaces.getCurrentSpaceName()){// TODO rules can be set by user
-				this.sendErrorResponse(response, 9, "Breakpoints Not in Current Address Space. \nPath is "+path);
+				this.sendEvent({event:"showInformationMessage",body:"Breakpoints Not in Current Address Space. Saved"} as DebugProtocol.Event);
 				this.addressSpaces.saveBreakpointsToSpace(args,spaceName);
 				return ;
 			}else{
@@ -411,6 +440,7 @@ protected handleBreakpoint(info: MINode) {
 		}, msg => {
 			this.sendErrorResponse(response, 9, msg.toString());
 		});
+		this.customRequest("listBreakpoints",{} as DebugAdapter.Response,{});
 	}
 
 	protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
@@ -962,7 +992,6 @@ protected handleBreakpoint(info: MINode) {
 			case "addDebugFile":
 				this.miDebugger.sendCliCommand("remove-symbol-file "+args.debugFilepath);
 				break;
-			
 			case "setKernelInOutBreakpoints"://remove previous breakpoints in this source
 				this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/trap/mod.rs"} as DebugProtocol.Source,breakpoints:[{line:135},{line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
 				break;
@@ -971,6 +1000,7 @@ protected handleBreakpoint(info: MINode) {
 			case "removeAllCliBreakpoints":
 				this.addressSpaces.removeAllBreakpoints();
 				this.miDebugger.sendCliCommand("del");
+				this.customRequest("listBreakpoints",{} as DebugAdapter.Response,{});
 				break;
 			//TODO 改掉自动断点切换的逻辑
 			//TODO link to WebView
@@ -990,6 +1020,8 @@ protected handleBreakpoint(info: MINode) {
 				break;
 			case "updateCurrentSpace":
 				this.addressSpaces.updateCurrentSpace(args);
+			case "disableCurrentSpaceBreakpoints":
+				this.addressSpaces.disableCurrentSpaceBreakpoints();
 			default:
 				return this.sendResponse(response);
 		}

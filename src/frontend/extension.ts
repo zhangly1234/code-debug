@@ -85,6 +85,13 @@ export function activate(context: vscode.ExtensionContext) {
 						removeAllCliBreakpoints();
 						vscode.window.showInformationMessage("All breakpoints including hidden ones are removed.");
 					}
+					if(message.disableCurrentSpaceBreakpoints){
+						vscode.window.showInformationMessage("disableCurrentSpaceBreakpoints received");
+						vscode.debug.activeDebugSession?.customRequest("disableCurrentSpaceBreakpoints");
+					}
+					if(message.updateAllSpacesBreakpointsInfo){
+						vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+					}
 				},
 				undefined,
 				context.subscriptions
@@ -169,8 +176,11 @@ export function activate(context: vscode.ExtensionContext) {
 							console.log("//////////////INFO///////////");
 							console.log(message.body);
 						}
+						else if(message.event === "showInformationMessage"){
+							vscode.window.showInformationMessage(message.body);
+						}
 						else if(message.event === "listBreakpoints"){
-							vscode.window.showInformationMessage('此时应该更新断点信息表格。');
+							vscode.window.showInformationMessage('断点信息表格已经更新');
 							currentPanel.webview.postMessage({ breakpointsInfo: message.body.data });
 						}
 					}
@@ -368,6 +378,8 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	<button type="button" onclick="removeDebugFile()">remove Debug File (initproc only for now)</button><br>
 	<button type="button" onclick="setKernelInOutBreakpoints()">set kernel in/out breakpoints</button><br>
 	<button type="button" onclick="removeAllCliBreakpoints()">removeAllCliBreakpoints</button><br>
+	<button type="button" onclick="disableCurrentSpaceBreakpoints()">disableCurrentSpaceBreakpoints</button><br>
+	<button type="button" onclick="updateAllSpacesBreakpointsInfo()">updateAllSpacesBreakpointsInfo</button><br>
 	<table id="regTable" style="float: left;">
 
 	
@@ -406,6 +418,12 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	function removeAllCliBreakpoints(){
 		vscode.postMessage({removeAllCliBreakpoints:true});
 	}
+	function disableCurrentSpaceBreakpoints(){//不是GDB的disable breakpoints
+		vscode.postMessage({disableCurrentSpaceBreakpoints:true});
+	}
+	function updateAllSpacesBreakpointsInfo(){
+		vscode.postMessage({updateAllSpacesBreakpointsInfo:true});
+	}
 	window.addEventListener('message', event => {
 		const message = event.data; // The JSON data our extension sent
 		if(message.regValues){
@@ -441,10 +459,10 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 
 }
 
-// send del to terminal
+// reset breakpoints in VSCode, Debug Adapter, GDB
 function removeAllCliBreakpoints(){ 
-	vscode.commands.executeCommand("workbench.debug.viewlet.action.removeAllBreakpoints");
-	vscode.debug.activeDebugSession?.customRequest("removeAllCliBreakpoints");
+	vscode.commands.executeCommand("workbench.debug.viewlet.action.removeAllBreakpoints");//VSCode
+	vscode.debug.activeDebugSession?.customRequest("removeAllCliBreakpoints");//Debug Adapter, GDB
 }
 
 
