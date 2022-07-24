@@ -88,13 +88,91 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
 
 
 ## 调试工具实现
-常用API如下：
+### 常用API、GDB命令
 ![](./docs/imgs/new-Coredebugger-APIs.png)
-编写代码时，我主要关注以下调试信息的处理流程：
+#### WebView <==> 插件进程
+- 插件进程 --> WebView
+    ```ts
+    currentPanel.webview.postMessage({ breakpointsInfo: message.body.data });
+    ```
+- WebView --> 插件进程
+    ```ts
+    vscode.postMessage({removeAllCliBreakpoints:true});
+    ```
+- 弹出消息窗口
+    ```ts
+    vscode.window.showInformationMessage("message"):
+    ```
+详见`src/frontend/extension.ts`
+#### 插件进程 <==> Debug Adapter
+1. 插件进程 --> Debug Adapter
+    ```ts
+    vscode.debug.activeDebugSession?.customRequest("requestName");
+    ```
+2. Debug Adapter解析customRequest
+    ```ts
+    protected customRequest(command: string, response: DebugProtocol.Response, args: any): void {
+        switch (command) {
+            case "requestName":
+            this.sendEvent({ event: "eventName", body: ["test"] } as DebugProtocol.Event);
+            this.sendResponse(response);
+            break;
+    ```
+3. 插件进程监听Events和Responses
+    ```ts
+    	let disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
+		createDebugAdapterTracker() {
+			return {
+				//监听VSCode即将发送给Debug Adapter的消息
+				onWillReceiveMessage:(message)=>{
+				    //...   	
+				},
+				onWillStartSession: () => { console.log("session started") },
+				//监听Debug Adapter发送给VSCode的消息
+				onDidSendMessage: (message) => {
+                    //...
+					if (message.type === "event") {
+						//...
+						}//处理自定义事件
+						else if (message.event === "eventTest") {
+							//Do Something
+						}
+						else if (message.event === "updateRegistersValuesEvent") {
+							//向WebView传递消息
+							currentPanel.webview.postMessage({ regValues: message.body });
+                            //...
+    ```
+
+详见`src/frontend/extension.ts`、`src/mibase.ts`
+#### Debug Adapter <===> Backend
+以setBreakPointsRequest为例：
+```ts
+    // src/mibase.ts
+	//设置某一个文件的所有断点
+	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
+        //clearBreakPoints()、addBreakPoint() 实现见src/backend/mi2/mi2.ts
+		this.miDebugger.clearBreakPoints(args.source.path).then(() => { //清空该文件的断点
+            //......
+			const all = args.breakpoints.map(brk => {
+				return this.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
+			});
+            // ......
+			
+```
+详见src/mibase.ts
+
+
+
+#### GDB命令
+- `add-symbol-file`
+- `break-insert -f`
+
+详细的输出及返回数据的格式可参考[官方文档](https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI.html#GDB_002fMI)
+
 
 ### 关键的寄存器和内存的数据获取
 1. `stopped`事件发生时，通过customRequest请求Debug Adapter返回寄存器信息,内存数据
-```javascript
+```ts
     //extension.ts
     //...
     if (message.type === "event") {
@@ -118,7 +196,7 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
 2. Debug Adapter响应这些请求(见src/mibase.ts/-MI2DebugSession-customRequest)并返回Responses和Events
 
 3. 插件进程接收并解析Responses和Events，将信息传递到WebView
-```javascript
+```ts
     //extension.ts
     //处理customRequest
     else if (message.event === "updateRegistersValuesEvent") {
@@ -131,7 +209,7 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
     //...
 ```
 4. WebView收到信息，更新网页
-```javascript
+```ts
     //extension.ts-getWebviewContent()
     window.addEventListener('message', event => {//接受消息
             const message = event.data; // The JSON data our extension sent
@@ -144,7 +222,7 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
 ```
 ### 断点检测与切换
 1. 当增删断点或`stopped`事件发生时，向Debug Adapter请求当前所有的断点信息（以及哪些断点被设置，哪些被缓存）
-```javascript
+```ts
     //extension,ts
     onDidSendMessage: (message) => {
         if (message.command === "setBreakpoints"){//如果Debug Adapter设置了一个断点
@@ -161,7 +239,7 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
     //...
 ```
 2. 当用户设置新断点时，判断这个断点能否在当下就设置，若否,则保存（VSCode编辑器和DA的断点是分离的，Debug Adapter不能控制编辑器的断点，故采用这种设计。见[此](https://stackoverflow.com/questions/55364690/is-it-possible-to-programmatically-set-breakpoints-with-a-visual-studio-code-ext)）
-```javascript
+```ts
 //src/mibase.ts-MI2DebugSession-setBreakPointsRequest
 	//设置某一个文件的所有断点
 	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
@@ -196,7 +274,7 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
 ### 到达内核边界时的处理
 
 1. 触发断点时，检测这个断点是否是内核边界的断点。
-```javascript
+```ts
     //src/mibase.ts 
     protected handleBreakpoint(info: MINode) {
         //...
@@ -211,7 +289,7 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
     }
 ```
 2. 若是，添加符号表文件，移除当前所有断点，加载用户态程序的断点，更新WebView信息。
-```javascript
+```ts
     //src/frontend/extension.ts
     //接收event
     //到达内核态->用户态的边界
@@ -228,6 +306,7 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
 ```
 
 ### 符号信息的获取
+以下涉及的所有修改[见此](./docs/rCore-mod.diff)
 #### 编译
 通过修改`Cargo.toml`里的`debug=true`，`opt-level=0`两个参数使得rust编译器在编译时保留DWARF信息。
 #### rCore的修改
@@ -341,14 +420,16 @@ Vec和VecDeque的pointer值通过gdb查看是错的（都是0x1,0x2之类的很�
 
 ## 扩展
 以下列出一些思路，结合[上文](#调试工具实现)，您可以容易地扩充本插件的功能：
-### 一般思路
-
-1. extension.ts => handle stopped
-2. mibase.ts => customRequest 
-    1. -->requests 
-    2. -->`this.miDebugger.sendCliCommand("add-symbol-file "+args.debugFilepath);`
-    3. --> events
-3. extension.ts => handle stopped-events --> WebView
+### 支持其他OS
+	- 获取符号表信息（例如vmlinux）
+	- 确定内核“出入口”断点
+### 观察其他内核数据结构
+1. `stopped`(extension.ts)
+1. 添加`customRequest`(mibase.ts)
+    1. 收集数据：GDB命令（mi2.ts中的方法，或者直接用this.miDebugger.sendCliCommand）
+    1. 返回信息：Events/Responses
+1. 插件进程解析Events/Responses并转发至WebView（extension.ts）
+1. 添加WebView界面(extension.ts)
 
 ### Multiple Debug File Support
 1. `vscode.debug.activeDebugSession?.customRequest("addDebugFile`

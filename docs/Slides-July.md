@@ -97,6 +97,7 @@ backgroundColor: white
 	- 保留*.debug段
 
 ---
+
 ## 局限
 - gdb的bug
 	- Self变量
@@ -106,7 +107,19 @@ backgroundColor: white
 - 被内联展开的函数
 
 ---
+## 扩展
+- 支持其他OS
+	- 获取符号表信息（例如vmlinux）
+	- 确定内核“出入口”断点
+- 观察其他内核数据结构
+	1. 添加`customRequest`，
+		1. 收集数据：GDB命令（mi2.ts）
+		1. 返回信息：Events/Responses
+	1. 插件进程解析Events/Responses并转发至WebView（extension.ts）
+	2. 添加WebView界面(extension.ts)
 
+
+---
 
 
 
