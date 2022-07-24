@@ -353,7 +353,7 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	</head>
 	<body>
 	<div class="container">
-	<div style="margin:30px;">
+	<div>
 		<button type="button" class="btn btn-info" onclick="removeDebugFile()">remove Debug File (initproc only for now)</button>&nbsp;&nbsp;&nbsp;&nbsp;
 		<button type="button" class="btn btn-info" onclick="setKernelInOutBreakpoints()">set kernel in/out breakpoints</button>&nbsp;&nbsp;&nbsp;&nbsp;
 		<button type="button" class="btn btn-info" onclick="removeAllCliBreakpoints()">removeAllCliBreakpoints</button>&nbsp;&nbsp;&nbsp;&nbsp;
