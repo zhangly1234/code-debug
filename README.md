@@ -343,8 +343,8 @@ todos:
 ### 安装-方法1
 vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 ```
-链接：https://pan.baidu.com/s/1qqa1yS__iAP2a2yJk7PNrQ?pwd=1234
-提取码：1234
+链接：https://pan.baidu.com/s/1KgNGT_kuGNwBrYI6LFK4qg?pwd=1234 
+提取码：1234 
 ```
 用户名oslab，密码是一个空格
 注意修改下git的用户名和邮箱
