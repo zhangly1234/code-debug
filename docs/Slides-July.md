@@ -89,12 +89,14 @@ backgroundColor: white
 ## 符号信息的获取
 - Cargo.toml
 	- `debug=true`
-	- `opt-level`=0
+	- `opt-level=0`
 		- 修改easy-fs-fuse
 		- USER_HEAP_SIZE
 		- ...
 - linker.ld
 	- 保留*.debug段
+
+---
 ## 局限
 - gdb的bug
 	- Self变量
