@@ -343,41 +343,64 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>CoreDebugger</title>
 		<style type="text/css">
-		body {background-color:yellow;}
 		.stashed {background-color:grey;}
 		.current {background-color:green;}
 		</style>
+		<!-- Bootstrap 的 CSS 文件 -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
+		<script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js">
+		</script>
 	</head>
 	<body>
-	<div>
-	<button type="button" onclick="removeDebugFile()">remove Debug File (initproc only for now)</button><br>
-	<button type="button" onclick="setKernelInOutBreakpoints()">set kernel in/out breakpoints</button><br>
-	<button type="button" onclick="removeAllCliBreakpoints()">removeAllCliBreakpoints</button><br>
-	<button type="button" onclick="disableCurrentSpaceBreakpoints()">disableCurrentSpaceBreakpoints</button><br>
-	<button type="button" onclick="updateAllSpacesBreakpointsInfo()">updateAllSpacesBreakpointsInfo</button><br>
-	<table id="regTable" style="float: left;">
-
-	
-
-	</table>
-	<div>
-	<table id="memTable">
-
-	
-
-	</table>
-
-	<h2>pc:       </h2><h4 id="pc">loading</h4>
-	<h2>Privilege: </h2><h4 id="privilege">loading</h4>
-	<h2>Breakpoints: </h2>
-	<h4 id="breakpointsInfo"><br>
-	current:<span id = "currentSpace"></span><br>
-		<table style="width:100%" id="spacesTable">
-
-		</table>
-	</h4>
+	<div class="container">
+	<div style="margin:30px;">
+		<button type="button" class="btn btn-info" onclick="removeDebugFile()">remove Debug File (initproc only for now)</button>&nbsp;&nbsp;&nbsp;&nbsp;
+		<button type="button" class="btn btn-info" onclick="setKernelInOutBreakpoints()">set kernel in/out breakpoints</button>&nbsp;&nbsp;&nbsp;&nbsp;
+		<button type="button" class="btn btn-info" onclick="removeAllCliBreakpoints()">removeAllCliBreakpoints</button>&nbsp;&nbsp;&nbsp;&nbsp;
+		<button type="button" class="btn btn-info" onclick="disableCurrentSpaceBreakpoints()">disableCurrentSpaceBreakpoints</button>&nbsp;&nbsp;&nbsp;&nbsp;
+		<button type="button" class="btn btn-info" onclick="updateAllSpacesBreakpointsInfo()">updateAllSpacesBreakpointsInfo</button><br>
 	</div>
-</div>
+	<div class="table-responsive">
+		<table class="table table-striped table-sm">
+			<thead>
+				<tr>
+					<th>name</th>
+					<th>value</th>
+				</tr>
+			</thead>
+			<!--寄存器-->
+			<tbody id="reg">
+			</tbody>
+		</table>
+	</div>
+
+	<div class="table-responsive">
+		<table class="table table-striped table-sm">
+			<thead>
+				<tr>
+					<th>data</th>
+					<th>from</th>
+					<th>length</th>
+				</tr>
+			</thead>
+			<!--存储器-->
+			<tbody id="mem">
+			</tbody>
+		</table>
+	</div>
+
+	<div>Privilege: </div><span id="privilege">loading</span>
+	<div>Breakpoints: </div>
+	<div id="breakpointsInfo"><br>
+		current:<span id = "currentSpace"></span><br>
+			<div class="table-responsive">
+				<table class="table table-striped table-sm" id="spacesTable">
+
+				</table>
+			</div>
+	</div>
+
+	</div>
 </body>
 <script>
 
@@ -408,19 +431,14 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	window.addEventListener('message', event => {
 		const message = event.data; // The JSON data our extension sent
 		if(message.regValues){
-			document.getElementById('regTable').innerHTML="";
-			document.getElementById('regTable').innerHTML+=JSON.stringify(message.regValues);
-			try{
-			document.getElementById('pc').innerHTML=message.regValues[32][1][1];
-			}catch(e){}
+			$("#reg").html("");
+			for (var i = 0; i < 33; i++) {
+				$("#reg").append("<tr><td>" + riscvRegNames[message.regValues[i][0][1]] + "</td><td>" + message.regValues[i][1][1] + "</td></tr>");
+			}
 		}
 		if(message.memValues){
 			let memValues = message.memValues;
-			// document.getElementById('memTable').innerHTML+=JSON.stringify(message.memValues)+"<br>";
-			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.data)+" ";
-			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.from)+" ";
-			document.getElementById('memTable').innerHTML+=JSON.stringify(memValues.length)+" <br>";
-			
+			$("#mem").append("<tr><td>" + memValues.data + "</td><td>" + memValues.from + "</td><td>" + memValues.length + "</td></tr>");
 		}
 		if(message.kernelToUserBorder){
 			document.getElementById('privilege').innerHTML='U';
@@ -435,9 +453,9 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			document.getElementById('spacesTable').innerHTML+="<tr><th>Space</th><th>Path</th><th>breakpoints</th></tr>";
 			for(let i = 0;i<info.spaces.length;i++){
 				for(let j=0;j<info.spaces[i].setBreakpointsArguments.length;j++){
-					let brkptStatus="stashed";
+					let brkptStatus="table-secondary";
 					if(info.spaces[i].name===info.current){
-						brkptStatus="current";
+						brkptStatus="table-success";
 					}
 					document.getElementById('spacesTable').innerHTML+="<tr class="+brkptStatus+"><th>"+info.spaces[i].name+"</th><th>"+info.spaces[i].setBreakpointsArguments[j].source.path+"</th><th>"+JSON.stringify(info.spaces[i].setBreakpointsArguments[j].breakpoints)+"</th></tr>"
 				}
