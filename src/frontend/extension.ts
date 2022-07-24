@@ -342,6 +342,11 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>CoreDebugger</title>
+		<style type="text/css">
+		body {background-color:yellow;}
+		.stashed {background-color:grey;}
+		.current {background-color:green;}
+		</style>
 	</head>
 	<body>
 	<div>
@@ -364,7 +369,13 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 
 	<h2>pc:       </h2><h4 id="pc">loading</h4>
 	<h2>Privilege: </h2><h4 id="privilege">loading</h4>
-	<h2>Breakpoints: </h2><h4 id="breakpointsInfo">loading</h4>
+	<h2>Breakpoints: </h2>
+	<h4 id="breakpointsInfo"><br>
+	current:<span id = "currentSpace"></span><br>
+		<table style="width:100%" id="spacesTable">
+
+		</table>
+	</h4>
 	</div>
 </div>
 </body>
@@ -418,7 +429,21 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			document.getElementById('privilege').innerHTML='S';
 		}
 		if(message.breakpointsInfo){
-			document.getElementById('breakpointsInfo').innerHTML=message.breakpointsInfo;
+			let info = JSON.parse(message.breakpointsInfo);
+			document.getElementById('currentSpace').innerHTML=info.current;
+			document.getElementById('spacesTable').innerHTML="";
+			document.getElementById('spacesTable').innerHTML+="<tr><th>Space</th><th>Path</th><th>breakpoints</th></tr>";
+			for(let i = 0;i<info.spaces.length;i++){
+				for(let j=0;j<info.spaces[i].setBreakpointsArguments.length;j++){
+					let brkptStatus="stashed";
+					if(info.spaces[i].name===info.current){
+						brkptStatus="current";
+					}
+					document.getElementById('spacesTable').innerHTML+="<tr class="+brkptStatus+"><th>"+info.spaces[i].name+"</th><th>"+info.spaces[i].setBreakpointsArguments[j].source.path+"</th><th>"+JSON.stringify(info.spaces[i].setBreakpointsArguments[j].breakpoints)+"</th></tr>"
+				}
+			}
+			
+			
 		}
 	});
     </script>
