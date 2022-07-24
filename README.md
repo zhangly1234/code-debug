@@ -1,5 +1,5 @@
 # proj158-rust-debugger
-{:toc}
+
 ## 引言
 
 ### 项目背景
@@ -238,7 +238,9 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
             }
     //...
 ```
+
 2. 当用户设置新断点时，判断这个断点能否在当下就设置，若否,则保存（VSCode编辑器和DA的断点是分离的，Debug Adapter不能控制编辑器的断点，故采用这种设计。见[此](https://stackoverflow.com/questions/55364690/is-it-possible-to-programmatically-set-breakpoints-with-a-visual-studio-code-ext)）
+
 ```ts
 //src/mibase.ts-MI2DebugSession-setBreakPointsRequest
 	//设置某一个文件的所有断点
@@ -266,7 +268,6 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
         //更新断点信息
 		this.customRequest("listBreakpoints",{} as DebugAdapter.Response,{});
 	}
-
 ```
 
 3. 当断点组切换（比如从内核态进到用户态），令GDB移除旧断点（断点信息仍然保存在`MIDebugSession.AddressSpaces.spaces`中），设置新断点。见`src/mibase.ts-AddressSpaces-updateCurrentSpace`。
