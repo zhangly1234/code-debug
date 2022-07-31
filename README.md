@@ -335,8 +335,17 @@ rCore-Tutorial为了提升性能，在用户程序链接脚本`linker.ld`里面d
 2. 通过docker容器提供在线版本vscode、rust工具链以及qemu-system-riscv64等调试rCore-Tutorial-v3所需要的工具，使用户可通过网页远程调用云端qemu/RISC-V开发板的gdb调试器进行代码跟踪与调试。该部分已基本完成，见docker文件夹。待debugger插件功能稳定后上传docker hub。
 
 todos:
-- 支持展示更多内核数据结构
+- 支持展示更多内核数据结构，比如进程控制块
+- 上传到VSCode插件商店
+- 对多进程提供更好的支持
+- 改用地址空间来判断当前特权级
+- 多处理机支持
+- 不用WebView，改用TreeView
+- 整理代码，抽象出项目核心，移植到vim/emacs......
+- 支持watchpoint
+- 支持真实硬件
 - 在边界时如需自动切换符号文件，那么需要知道切换到哪个用户态程序。但是，我们只有在用户态程序的断点被触发之后，才能知道切换到哪个用户态程序。所以我建议这个功能不做了，改成用户手动设置符号表文件，想看哪个用户态程序就加载哪个用户态程序的符号表文件。在现在版本的代码中，仍然自动切换到initproc。
+- 用户程序现在没开opt-level=0,感兴趣的同学可以试试能不能打开
 
 
 ## 安装与使用
@@ -358,6 +367,7 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 1. 用nodesource安装nodejs 
 1. 安装 vscode
 1. 修改rCore-Tutorial-v3的源码和编译参数（diff文件可用vscode+diff插件观看）：[见此](./docs/rCore-mod.diff)
+1. 在os,user,easy-fs-fuse,easy-fs目录下make clean，如果命令不存在就cargo clean(此举是为了让linker.ld的更改生效)
 1. clone 本仓库，在仓库目录下`npm install`
 1. 按f5启动插件
 1. 修改src/frontend/fakeMakefile.ts里的`PROJECT_PATH`

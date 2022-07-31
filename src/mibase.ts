@@ -980,7 +980,7 @@ protected handleBreakpoint(info: MINode) {
 			case "addDebugFile":
 				this.miDebugger.sendCliCommand("add-symbol-file "+args.debugFilepath);
 				break;
-			case "addDebugFile":
+			case "removeDebugFile":
 				this.miDebugger.sendCliCommand("remove-symbol-file "+args.debugFilepath);
 				break;
 			case "setKernelInOutBreakpoints"://remove previous breakpoints in this source
