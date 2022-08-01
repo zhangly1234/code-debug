@@ -352,7 +352,7 @@ todos:
 ### 安装-方法1
 vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 ```
-链接：https://pan.baidu.com/s/1KgNGT_kuGNwBrYI6LFK4qg?pwd=1234 
+链接：https://pan.baidu.com/s/19udMjykjj1UUZCwP43C_Xg?pwd=1234 
 提取码：1234 
 ```
 用户名oslab，密码是一个空格
