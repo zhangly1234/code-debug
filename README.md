@@ -358,21 +358,31 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 用户名oslab，密码是一个空格
 注意修改下git的用户名和邮箱
 ### 安装-方法2
+流程略长，如果出现问题可以提issue
 1. 推荐用ubuntu20.04虚拟机。其它版本请确保使用较新的`npm`和`node`。
+1. 用nodesource安装nodejs 
+1. 安装 vscode
 1. 获取risc-v工具链
 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本），
 或者试试直接访问
 [这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下。
-1. 参考[rCore指导书](https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter0/5setup-devel-env.html)配置rCore-Tutorial的环境。确保gdb和qemu在环境变量里。
-1. 用nodesource安装nodejs 
-1. 安装 vscode
-1. 修改rCore-Tutorial-v3的源码和编译参数（diff文件可用vscode+diff插件观看）：[见此](./docs/rCore-mod.diff)
+1. 参考[rCore指导书](https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter0/5setup-devel-env.html)配置rCore-Tutorial的环境。
+    - 推荐将`rCore-Tutorial-v3`仓库clone到home目录。
+    - 确保gdb和qemu在环境变量里。
+1. 根据[这个diff文件](./docs/rCore-mod.diff)修改rCore-Tutorial-v3的源码和编译参数.
+    - 自动替换方法：在rCore-Tutorial-v3目录下，`git apply /path/to/rCore-mod.diff`
+    - 如果自动替换失败，可以考虑根据diff文件手动修改代码
+    - 或直接用[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)的修改过的rCore-Tutorial-v3.
 1. 在os,user,easy-fs-fuse,easy-fs目录下make clean，如果命令不存在就cargo clean(此举是为了让linker.ld的更改生效)
-1. clone 本仓库，在仓库目录下`npm install`
-1. 按f5启动插件
+1. 跑一遍rCore-Tutorial-v3
+1. clone 本仓库，建议clone到home目录
+1. 在仓库目录下`npm install`
+
 1. 修改src/frontend/fakeMakefile.ts里的`PROJECT_PATH`
-1. 创建launch.json（选GDB）（可根据自己需要修改）: 
-1. 确保/src/mibase.ts/-MI2DebugSession-customRequest方法-case setKernelInOutBreakpoints中硬编码的文件名和行数指向rCore代码中内核的出入口
+1. 确保/src/mibase.ts/-MI2DebugSession-customRequest方法-`case setKernelInOutBreakpoints`中硬编码的文件名和行数指向rCore代码中内核的出入口
+1. 按f5启动插件
+1. 在弹出的新窗口内打开rCore-Tutorial-v3文件夹，创建launch.json（选GDB）（可根据自己需要修改）: 
+
 ```json
 {
     "version": "0.2.0",
