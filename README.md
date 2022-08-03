@@ -358,7 +358,7 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 用户名oslab，密码是一个空格
 注意修改下git的用户名和邮箱
 ### 安装-方法2
-流程略长，如果出现问题可以提issue
+流程略长，如果出现问题欢迎提issue
 1. 推荐用ubuntu20.04虚拟机。其它版本请确保使用较新的`npm`和`node`。
 1. 用nodesource安装nodejs 
 1. 安装 vscode
