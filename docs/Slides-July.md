@@ -8,7 +8,7 @@ footer: ''
 backgroundColor: white
 ---
 
-# CoreDebugger
+# proj158
 支持Rust语言的源代码级内核调试工具
 
 ---
@@ -21,21 +21,11 @@ backgroundColor: white
 ## 在线调试系统
 - 浏览器打开即用
 	- 类似github classroom
-- 对操作系统调试有较好支持
-- docker镜像
-- vscode插件
----
-## docker镜像
-- 基于 openvscode-server 
-- rust、risc-v工具链
-- 网页版vscode
----
-## vscode插件
-- 操作系统相关的调试功能
-- 支持本地、网页版本vscode
-- 功能
-- 原理
-- 扩展
+	- 提供在线VSCode
+- 调试者与被调试内核分离
+- VSCode插件支持操作系统相关的调试功能
+	- 插件也可以在本地版本VSCode上使用
+
 ---
 ## 功能
 - 寄存器
@@ -48,85 +38,70 @@ backgroundColor: white
 - 自动加载符号信息文件
 ![bg contain right:60%](./imgs/coredebugger-screenshot-bootstrap-mid.png)
 ---
+## 调试工具设计与实现
+- 服务器
+- 用户端
+- 内核态用户态的断点冲突
+![bg contain right:60%](./imgs/arch-august.png)
+---
+
+## 服务器
+- 基于 `openvscode-server`提供网页版vscode
+- 提供qemu、rust工具链、gdb
+- 自动编译、加载内核和GDB
+![bg contain right:60%](./imgs/arch-august.png)
+---
 ## 符号信息的获取
-- Cargo.toml
+- `Cargo.toml`编译参数
 	- `debug=true`
 	- `opt-level=0`
 		- 修改easy-fs-fuse
-		- USER_HEAP_SIZE
+		- `USER_HEAP_SIZE`
 		- ...
-- linker.ld
+- `linker.ld`
 	- 保留*.debug段
+![bg contain right:60%](./imgs/arch-august.png)
 
 ---
 
-## 获取寄存器、内存信息
+## Debug Adapter
+- 负责协调VSCode和GDB的独立进程。
+- 消息类型
+	- Request
+	- Response
+	- Event
 - Debug Adapter Protocol
 	- 大量customRequest
-- Debug Adapter
-	- 消息类型
-		- Request
-		- Response
-		- Event
 ![bg contain right:55%](./imgs/debug-arch1.png)
 ---
-## 特权级切换处理
-- 符号表文件
-	- `add-file` -> GDB
-- 断点
-	- GDB限制：无法在内核态设置用户态代码的断点
-	- 解决办法：暂存，待时机合适再设置断点
-- 当前所在特权级
-	- risc-v处理器无寄存器能显示反映当前特权级
-	- 借助“边界”断点、地址空间、文件名判断
+## 用户端
+- Extension Frontend
+	- 消息监听与转发
+	- Debug UI
+	- WebView
+![bg contain right:55%](./imgs/debug-arch1.png)
 ---
-## 断点的保存与恢复
-- 问题：GDB无法在内核时设置用户态程序的断点
+## 内核态用户态的断点冲突
+- GDB限制：无法在内核态设置用户态代码的断点
 	- 可能与页表刷新有关
-- 解决思路：
-	- 在内核“进出口”处设置断点
-	- “进出口”被触发时清空断点，设置新断点
-	- 缓存暂时无法设置的断点，待时机合适再设置
-	- 实现：
-		- `AddressSpaces`
+- 解决思路：暂存断点，待时机合适再设置断点
 ---
-## `AddressSpaces`
-- 管理“切换”相关功能
-- `spaces:AddressSpace[];`:断点组
-- `updateCurrentSpace`:触发断点时，更换断点组
-- `saveBreakpointsToSpace`:添加新断点时，根据当前特权级缓存、设置断点
+## 断点组
+- 在内核即将进入用户态，以及trap_handler处设置断点
+- “进出口断点”被触发时清空断点，设置新断点
+- 缓存暂时无法设置的断点，待时机合适再设置
+![bg contain right:55%](./imgs/brk.png)
 - 扩展：内存信息也可以如此“切换“
 ---
 
-
-## 常用API
-![](./imgs/new-Coredebugger-APIs.png)
-
-
+## 特权级切换处理
+- 切换符号表文件
+	- `add-file` -> GDB
+- 切换断点组
+- 更新当前所在特权级
+	- risc-v处理器无寄存器能显示反映当前特权级
+	- 借助“边界”断点、地址空间、文件名判断
 ---
-
-## 插件主进程（extension.ts）
-- 监听Debug Adapter和VSCode的通信
-	- `stopped`：向Debug Adapter请求更新WebView信息
-	- 自定义事件：
-		1. 转发消息至WebView
-		2. 特权级切换处理
-- Debug Adapter Protocol
-	- 发送：`Request`
-	- 响应：`Response`,`Event`
-
----
-## 时机合适？
-- 在内核即将进入用户态，以及trap_handler处设置断点
-- 每当触发断点时，都检测这个断点是否是上述两个内核“边界”处的断点
-- 若是，添加符号表文件，移除当前所有断点，加载用户态程序的断点，更新WebView信息。
-
----
-
-
-
-
-
 ## 局限
 - gdb的bug
 	- Self变量
