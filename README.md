@@ -1,5 +1,7 @@
 # proj158-rust-debugger
 支持Rust语言的源代码级内核调试工具
+
+[最新版本PPT](./docs/Slides-August.pdf)
 ## 引言
 
 ### 项目背景
