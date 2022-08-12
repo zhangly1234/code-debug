@@ -38,9 +38,9 @@ export enum RunCommand { CONTINUE, RUN, NONE }
 class AddressSpace {
 	name:string;
 	setBreakpointsArguments:DebugProtocol.SetBreakpointsArguments[];
-	constructor(name:string,setBreakpointsArguments:DebugProtocol.SetBreakpointsArguments[]){
-		this.name=name;
-		this.setBreakpointsArguments=setBreakpointsArguments;
+	constructor(name:string, setBreakpointsArguments:DebugProtocol.SetBreakpointsArguments[]){
+		this.name = name;
+		this.setBreakpointsArguments = setBreakpointsArguments;
 	}
 }
 //负责断点缓存，转换等
@@ -48,11 +48,11 @@ class AddressSpaces{
 	protected spaces:AddressSpace[];
 	protected currentSpaceName:string;
 	protected debugSession: MI2DebugSession;
-	constructor(currentSpace:string,debugSession:MI2DebugSession){
-		this.debugSession=debugSession;
-		this.spaces=[];
-		this.spaces.push(new AddressSpace(currentSpace,[]));
-		this.currentSpaceName=currentSpace;
+	constructor(currentSpace:string, debugSession:MI2DebugSession){
+		this.debugSession = debugSession;
+		this.spaces = [];
+		this.spaces.push(new AddressSpace(currentSpace, []));
+		this.currentSpaceName = currentSpace;
 	}
 	///此函数将文件目录转换为空间名，
 	///如src/bin/initproc.rs=>‘src/bin/initproc.rs‘空间，src/trap/mod.rs=>‘kernel‘空间
@@ -61,9 +61,9 @@ class AddressSpaces{
 	///此处是一个权宜之计，对于当前版本的rCore刚好能用。
 	///注意path只要包含src/bin就会被判定为用户程序
 	public pathToSpaceName(path:string):string{
-		if(path.includes("easy-fs/src")||path.includes("user/src")||path.includes("src/bin")){
-			let s = path.split('/');
-			return s[s.length-3]+'/'+s[s.length-2]+'/'+s[s.length-1];
+		if(path.includes("easy-fs/src") || path.includes("user/src") || path.includes("src/bin")){
+			const s = path.split('/');
+			return s[s.length - 3] + '/' + s[s.length - 2] + '/' + s[s.length - 1];
 		}
 		else{
 			return 'kernel';
@@ -72,19 +72,19 @@ class AddressSpaces{
 	//将当前空间的断点清除（缓存不清除）
 	public disableCurrentSpaceBreakpoints(){
 		let currentIndex = -1;
-		for(let j=0;j<this.spaces.length;j++){
-			if(this.spaces[j].name===this.currentSpaceName){
-				currentIndex=j;
+		for(let j = 0;j < this.spaces.length;j++){
+			if(this.spaces[j].name === this.currentSpaceName){
+				currentIndex = j;
 			}
 		}
 		//假设this.spaces内缓存的断点信息和GDB里真实的断点信息完全一致。理论上确实是完全一致的。
 		//未来可以尝试令gdb删除某个文件里的所有断点
-		if(currentIndex===-1){//别写成=
+		if(currentIndex === -1){//别写成=
 			return;
 		}
 		this.spaces[currentIndex].setBreakpointsArguments.forEach(e=>{
 			this.debugSession.miDebugger.clearBreakPoints(e.source.path);
-			this.debugSession.sendEvent({event:"showInformationMessage",body:"disableCurrentSpaceBreakpoints successed. index= "+currentIndex} as DebugProtocol.Event);
+			this.debugSession.sendEvent({event:"showInformationMessage", body:"disableCurrentSpaceBreakpoints successed. index= " + currentIndex} as DebugProtocol.Event);
 		});
 
 	}
@@ -93,27 +93,27 @@ class AddressSpaces{
 	//缓存旧空间的断点，清除旧空间的断点，加载新空间的断点
 	public updateCurrentSpace(updateTo:string){
 		let newIndex = -1;
-		for(let i=0;i<this.spaces.length;i++){
-			if (this.spaces[i].name===updateTo){
-				newIndex=i;
+		for(let i = 0;i < this.spaces.length;i++){
+			if (this.spaces[i].name === updateTo){
+				newIndex = i;
 			}
 		}
-		if(newIndex===-1){
-			this.spaces.push(new AddressSpace(updateTo,[]));
-			newIndex=this.spaces.length-1;
+		if(newIndex === -1){
+			this.spaces.push(new AddressSpace(updateTo, []));
+			newIndex = this.spaces.length - 1;
 		}
 		let oldIndex = -1;
-		for(let j=0;j<this.spaces.length;j++){
-			if(this.spaces[j].name===this.currentSpaceName){
-				oldIndex=j;
+		for(let j = 0;j < this.spaces.length;j++){
+			if(this.spaces[j].name === this.currentSpaceName){
+				oldIndex = j;
 			}
 		}
-		if(oldIndex===-1){
-			this.spaces.push(new AddressSpace(this.currentSpaceName,[]));
-			oldIndex=this.spaces.length-1;
+		if(oldIndex === -1){
+			this.spaces.push(new AddressSpace(this.currentSpaceName, []));
+			oldIndex = this.spaces.length - 1;
 		}
 		this.spaces[oldIndex].setBreakpointsArguments.forEach(e=>{
-			this.debugSession.miDebugger.clearBreakPoints(e.source.path)
+			this.debugSession.miDebugger.clearBreakPoints(e.source.path);
 		});
 		this.spaces[newIndex].setBreakpointsArguments.forEach(args=>{
 			this.debugSession.miDebugger.clearBreakPoints(args.source.path).then(() => {
@@ -129,38 +129,38 @@ class AddressSpaces{
 				//TODO
 			});
 		});
-		this.currentSpaceName=this.spaces[newIndex].name;
+		this.currentSpaceName = this.spaces[newIndex].name;
 	}
 	public getCurrentSpaceName(){
 		return this.currentSpaceName;
 	}
 	///当设置一新断点时会调用该函数。将断点信息保存到对应的空间中。
-	public saveBreakpointsToSpace(args:DebugProtocol.SetBreakpointsArguments,spaceName: string){
+	public saveBreakpointsToSpace(args:DebugProtocol.SetBreakpointsArguments, spaceName: string){
 		let found = -1;
-		for(let i=0;i<this.spaces.length;i++){
-			if (this.spaces[i].name===spaceName){
-				found=i;
+		for(let i = 0;i < this.spaces.length;i++){
+			if (this.spaces[i].name === spaceName){
+				found = i;
 			}
 		}
-		if(found===-1){
-			this.spaces.push(new AddressSpace(spaceName,[]));
-			found=this.spaces.length-1;
+		if(found === -1){
+			this.spaces.push(new AddressSpace(spaceName, []));
+			found = this.spaces.length - 1;
 		}
-		let alreadyThere=-1;
-		for(let i=0;i<this.spaces[found].setBreakpointsArguments.length;i++){
-			if(this.spaces[found].setBreakpointsArguments[i].source.path===args.source.path){
-				this.spaces[found].setBreakpointsArguments[i]=args;
-				alreadyThere=i;
-			}	
+		let alreadyThere = -1;
+		for(let i = 0;i < this.spaces[found].setBreakpointsArguments.length;i++){
+			if(this.spaces[found].setBreakpointsArguments[i].source.path === args.source.path){
+				this.spaces[found].setBreakpointsArguments[i] = args;
+				alreadyThere = i;
+			}
 		}
-		if(alreadyThere===-1){
+		if(alreadyThere === -1){
 			this.spaces[found].setBreakpointsArguments.push(args);
 		}
-		
+
 	}
 	///仅用于reset
 	public removeAllBreakpoints(){
-		this.spaces=[];
+		this.spaces = [];
 	}
 	public status(){
 		return JSON.stringify({
@@ -189,7 +189,7 @@ export class MI2DebugSession extends DebugSession {
 	protected commandServer: net.Server;
 	protected serverPath: string;
 	protected running: boolean = false;
-	protected addressSpaces=new AddressSpaces('kernel',this);//for rCore
+	protected addressSpaces = new AddressSpaces('kernel', this);//for rCore
 
 	public constructor(debuggerLinesStartAt1: boolean, isServer: boolean = false) {
 		super(debuggerLinesStartAt1, isServer);
@@ -210,7 +210,6 @@ export class MI2DebugSession extends DebugSession {
 		this.miDebugger.on("thread-created", this.threadCreatedEvent.bind(this));
 		this.miDebugger.on("thread-exited", this.threadExitedEvent.bind(this));
 		this.miDebugger.once("debug-ready", (() => this.sendEvent(new InitializedEvent())));
-		let that = this;
 		/* czy
 		vscode.debug.registerDebugAdapterTrackerFactory('*', {
 			createDebugAdapterTracker() {
@@ -276,30 +275,30 @@ export class MI2DebugSession extends DebugSession {
 		this.sendEvent(new OutputEvent(msg, type));
 	}
 
-/*
+	/*
 example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done","results":[["threads",[[["id","1"],["target-id","Thread 1.1"],["details","CPU#0 [running]"],["frame",[["level","0"],["addr","0x0000000000010156"],["func","initproc::main"],["args",[]],["file","src/bin/initproc.rs"],["fullname","/home/czy/rCore-Tutorial-v3/user/src/bin/initproc.rs"],["line","13"],["arch","riscv:rv64"]]],["state","stopped"]]]],["current-thread-id","1"]]}}
 */
-protected handleBreakpoint(info: MINode) {
-	const event = new StoppedEvent("breakpoint", parseInt(info.record("thread-id")));
-	(event as DebugProtocol.StoppedEvent).body.allThreadsStopped = info.record("stopped-threads") == "all";
-	this.sendEvent(event);
-	//this.sendEvent({ event: "info", body: info } as DebugProtocol.Event);
-	//TODO only for rCore currently
-	if (this.addressSpaces.pathToSpaceName(info.outOfBandRecord[0].output[3][1][4][1])==='kernel'){
-		this.addressSpaces.updateCurrentSpace('kernel');
-		this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
-		if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" && info.outOfBandRecord[0].output[3][1][5][1] === '135') {
-			this.sendEvent({ event: "kernelToUserBorder" } as DebugProtocol.Event);
+	protected handleBreakpoint(info: MINode) {
+		const event = new StoppedEvent("breakpoint", parseInt(info.record("thread-id")));
+		(event as DebugProtocol.StoppedEvent).body.allThreadsStopped = info.record("stopped-threads") == "all";
+		this.sendEvent(event);
+		//this.sendEvent({ event: "info", body: info } as DebugProtocol.Event);
+		//TODO only for rCore currently
+		if (this.addressSpaces.pathToSpaceName(info.outOfBandRecord[0].output[3][1][4][1]) === 'kernel'){
+			this.addressSpaces.updateCurrentSpace('kernel');
+			this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
+			if (info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" && info.outOfBandRecord[0].output[3][1][5][1] === '135') {
+				this.sendEvent({ event: "kernelToUserBorder" } as DebugProtocol.Event);
+			}
 		}
-	}
-	else{
-		let userProgramName = this.addressSpaces.pathToSpaceName(info.outOfBandRecord[0].output[3][1][4][1])
-		this.addressSpaces.updateCurrentSpace(userProgramName);
-		this.sendEvent({ event: "inUser",body:{userProgramName:userProgramName} } as DebugProtocol.Event);
-	}
+		else{
+			const userProgramName = this.addressSpaces.pathToSpaceName(info.outOfBandRecord[0].output[3][1][4][1]);
+			this.addressSpaces.updateCurrentSpace(userProgramName);
+			this.sendEvent({ event: "inUser", body:{userProgramName:userProgramName} } as DebugProtocol.Event);
+		}
 
 
-}
+	}
 
 	protected handleBreak(info?: MINode) {
 		const event = new StoppedEvent("step", info ? parseInt(info.record("thread-id")) : 1);
@@ -414,15 +413,15 @@ protected handleBreakpoint(info: MINode) {
 			}
 			//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），
 			//暂时不通知GDB设置断点
-			let spaceName = this.addressSpaces.pathToSpaceName(path);
-			if (spaceName!==this.addressSpaces.getCurrentSpaceName()){// TODO rules can be set by user
-				this.sendEvent({event:"showInformationMessage",body:"Breakpoints Not in Current Address Space. Saved"} as DebugProtocol.Event);
-				this.addressSpaces.saveBreakpointsToSpace(args,spaceName);
+			const spaceName = this.addressSpaces.pathToSpaceName(path);
+			if (spaceName !== this.addressSpaces.getCurrentSpaceName()){// TODO rules can be set by user
+				this.sendEvent({event:"showInformationMessage", body:"Breakpoints Not in Current Address Space. Saved"} as DebugProtocol.Event);
+				this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
 				return ;
 			}else{
-				this.addressSpaces.saveBreakpointsToSpace(args,spaceName);
+				this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
 			}
-			
+
 			const all = args.breakpoints.map(brk => {
 				return this.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
 			});
@@ -444,7 +443,7 @@ protected handleBreakpoint(info: MINode) {
 		}, msg => {
 			this.sendErrorResponse(response, 9, msg.toString());
 		});
-		this.customRequest("listBreakpoints",{} as DebugAdapter.Response,{});
+		this.customRequest("listBreakpoints", {} as DebugAdapter.Response, {});
 	}
 
 	protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
@@ -974,24 +973,24 @@ protected handleBreakpoint(info: MINode) {
 					(data) => {
 						this.sendEvent({ event: "memValues", body: { data: data, from: args.from, length: args.length } } as DebugProtocol.Event);
 					}
-				)
+				);
 				this.sendResponse(response);
 				break;
 			case "addDebugFile":
-				this.miDebugger.sendCliCommand("add-symbol-file "+args.debugFilepath);
+				this.miDebugger.sendCliCommand("add-symbol-file " + args.debugFilepath);
 				break;
 			case "removeDebugFile":
-				this.miDebugger.sendCliCommand("remove-symbol-file "+args.debugFilepath);
+				this.miDebugger.sendCliCommand("remove-symbol-file " + args.debugFilepath);
 				break;
 			case "setKernelInOutBreakpoints"://remove previous breakpoints in this source
-				this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse,{source: {path:"src/trap/mod.rs"} as DebugProtocol.Source,breakpoints:[{line:135},{line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
+				this.setBreakPointsRequest(response as DebugProtocol.SetBreakpointsResponse, {source: {path:"src/trap/mod.rs"} as DebugProtocol.Source, breakpoints:[{line:135}, {line:65}] as DebugProtocol.SourceBreakpoint[]} as DebugProtocol.SetBreakpointsArguments);
 				break;
 			case "setKernelOutBreakpoints"://out only
 				break;
 			case "removeAllCliBreakpoints":
 				this.addressSpaces.removeAllBreakpoints();
 				this.miDebugger.sendCliCommand("del");
-				this.customRequest("listBreakpoints",{} as DebugAdapter.Response,{});
+				this.customRequest("listBreakpoints", {} as DebugAdapter.Response, {});
 				break;
 			////更新WebView的断点信息
 			case "listBreakpoints":

@@ -28,7 +28,7 @@
 		"no-null/no-null": "error",
 		"eol-last": "error",
 		"indent": ["error", "tab", {"SwitchCase": 1}],
-		"no-console": "error",
+		"no-console": "off",
 		"no-trailing-spaces": "error",
 		"prefer-const": ["error", {"ignoreReadBeforeAssign": true}],
 		"semi": "error",

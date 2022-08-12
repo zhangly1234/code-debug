@@ -12,23 +12,24 @@ export class MI2_LLDB extends MI2 {
 		// select the correct API to check whether the target path is an absolute path.
 		const debuggerPath = path.posix.isAbsolute(cwd) ? path.posix : path.win32;
 
-		if (!debuggerPath.isAbsolute(target))
-			target = debuggerPath.join(cwd, target);
+		if (!debuggerPath.isAbsolute(target)) target = debuggerPath.join(cwd, target);
 
 		const cmds = [
 			this.sendCommand("gdb-set target-async on"),
-			new Promise(resolve => {
-				this.sendCommand("list-features").then(done => {
-					this.features = done.result("features");
-					resolve(undefined);
-				}, err => {
-					this.features = [];
-					resolve(undefined);
-				});
-			})
+			new Promise((resolve) => {
+				this.sendCommand("list-features").then(
+					(done) => {
+						this.features = done.result("features");
+						resolve(undefined);
+					},
+					(err) => {
+						this.features = [];
+						resolve(undefined);
+					}
+				);
+			}),
 		];
-		if (!attach)
-			cmds.push(this.sendCommand("file-exec-and-symbols \"" + escape(target) + "\""));
+		if (!attach) cmds.push(this.sendCommand('file-exec-and-symbols "' + escape(target) + '"'));
 		for (const cmd of this.extraCommands) {
 			cmds.push(this.sendCliCommand(cmd));
 		}
@@ -38,13 +39,26 @@ export class MI2_LLDB extends MI2 {
 	attach(cwd: string, executable: string, target: string): Thenable<any> {
 		return new Promise((resolve, reject) => {
 			const args = this.preargs.concat(this.extraargs || []);
-			this.process = ChildProcess.spawn(this.application, args, { cwd: cwd, env: this.procEnv });
+			this.process = ChildProcess.spawn(this.application, args, {
+				cwd: cwd,
+				env: this.procEnv,
+			});
 			this.process.stdout.on("data", this.stdout.bind(this));
 			this.process.stderr.on("data", this.stderr.bind(this));
-			this.process.on("exit", (() => { this.emit("quit"); }).bind(this));
-			this.process.on("error", ((err) => { this.emit("launcherror", err); }).bind(this));
+			this.process.on(
+				"exit",
+				(() => {
+					this.emit("quit");
+				}).bind(this)
+			);
+			this.process.on(
+				"error",
+				((err) => {
+					this.emit("launcherror", err);
+				}).bind(this)
+			);
 			const promises = this.initCommands(target, cwd, true);
-			promises.push(this.sendCommand("file-exec-and-symbols \"" + escape(executable) + "\""));
+			promises.push(this.sendCommand('file-exec-and-symbols "' + escape(executable) + '"'));
 			promises.push(this.sendCommand("target-attach " + target));
 			Promise.all(promises).then(() => {
 				this.emit("debug-ready");
@@ -54,7 +68,7 @@ export class MI2_LLDB extends MI2 {
 	}
 
 	setBreakPointCondition(bkptNum, condition): Thenable<any> {
-		return this.sendCommand("break-condition " + bkptNum + " \"" + escape(condition) + "\" 1");
+		return this.sendCommand("break-condition " + bkptNum + ' "' + escape(condition) + '" 1');
 	}
 
 	goto(filename: string, line: number): Thenable<Boolean> {

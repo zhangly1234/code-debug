@@ -6,13 +6,13 @@ import * as os from "os";
 import { DebugSession } from "vscode-debugadapter";
 import { Session } from "inspector";
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { MI2DebugSession } from "../mibase"
+import { MI2DebugSession } from "../mibase";
 import { isNullOrUndefined } from "util";
 import { resolve } from "dns";
 import { rejects } from "assert";
 import { Z_NO_COMPRESSION } from "zlib";
-import { riscvRegNames } from "./webview"
-import {startupCmd} from "./fakeMakefile"
+import { riscvRegNames } from "./webview";
+import {startupCmd} from "./fakeMakefile";
 
 export function activate(context: vscode.ExtensionContext) {
 	let NEXT_TERM_ID = 1;
@@ -46,8 +46,8 @@ export function activate(context: vscode.ExtensionContext) {
 	//=========================================================================================
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
 	let webviewMemState = [{ from: 0x80200000, length: 16 }, { from: 0x80201000, length: 32 }];
-	let kernelInOutBreakpointArgs=1;
-	let userDebugFile = 'initproc';//可以修改为其它用户程序名，如matrix
+	const kernelInOutBreakpointArgs = 1;
+	const userDebugFile = 'initproc';//可以修改为其它用户程序名，如matrix
 	//========================================================================================
 
 
@@ -80,7 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 					if(message.setKernelInOutBreakpoints){
 						vscode.debug.activeDebugSession?.customRequest("setKernelInOutBreakpoints");
-						vscode.window.showInformationMessage("Kernel In Out Breakpoints Set")
+						vscode.window.showInformationMessage("Kernel In Out Breakpoints Set");
 					}
 					if(message.removeAllCliBreakpoints){
 						removeAllCliBreakpoints();
@@ -103,15 +103,15 @@ export function activate(context: vscode.ExtensionContext) {
 			// })
 		})
 	);
-	let disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
+	const disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
 		createDebugAdapterTracker() {
 			return {
 				//监听VSCode即将发送给Debug Adapter的消息
 				onWillReceiveMessage:(message)=>{
 					//console.log("//////////RECEIVED FROM EDITOR///////////\n "+JSON.stringify(message)+"\n//////////////////\n ");
-					
+
 				},
-				onWillStartSession: () => { console.log("session started") },
+				onWillStartSession: () => { console.log("session started"); },
 				//监听Debug Adapter发送给VSCode的消息
 				onDidSendMessage: (message) => {
 					//console.log("//////////MESSAGE///////////\n "+JSON.stringify(message)+"\n//////////////////\n ");
@@ -130,11 +130,11 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
 							//请求内存数据
 							webviewMemState.forEach(element => {
-								vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
+								vscode.debug.activeDebugSession?.customRequest("memValuesRequest", element);
 							});
 							//更新WebView中的断点信息
 							vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
-							
+
 						}//处理自定义事件
 						else if (message.event === "eventTest") {
 							//console.log("Extension Received eventTest");
@@ -153,11 +153,11 @@ export function activate(context: vscode.ExtensionContext) {
 						else if (message.event === "kernelToUserBorder") {
 							webviewMemState = [];//TODO applyMemStateSet
 							// removeAllCliBreakpoints();
-							vscode.window.showInformationMessage("switched to "+userDebugFile+" breakpoints");
-							vscode.debug.activeDebugSession?.customRequest("addDebugFile", { debugFilepath: os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/"+userDebugFile });
-							vscode.debug.activeDebugSession?.customRequest("updateCurrentSpace","src/bin/"+userDebugFile+".rs");
+							vscode.window.showInformationMessage("switched to " + userDebugFile + " breakpoints");
+							vscode.debug.activeDebugSession?.customRequest("addDebugFile", { debugFilepath: os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/" + userDebugFile });
+							vscode.debug.activeDebugSession?.customRequest("updateCurrentSpace", "src/bin/" + userDebugFile + ".rs");
 							currentPanel.webview.postMessage({ kernelToUserBorder: true });
-							vscode.window.showInformationMessage("All breakpoints removed. Symbol file "+userDebugFile+" added. Now you can set user program breakpoints.  line 13 println!(\"aaaaa... recommemded if it's initproc.rs");
+							vscode.window.showInformationMessage("All breakpoints removed. Symbol file " + userDebugFile + " added. Now you can set user program breakpoints.  line 13 println!(\"aaaaa... recommemded if it's initproc.rs");
 							console.log("/////////////////////////kernelToUserBorder///////////////////");
 						}
 						//当前在内核态
@@ -183,7 +183,7 @@ export function activate(context: vscode.ExtensionContext) {
 					//onWillReceiveMessage:(message) => {console.log(message);/*vscode.debug.activeDebugSession?.customRequest("envokeUpdateDebugWebviewEvent")*/}
 
 				}
-			}
+			};
 		}
 	});
 }
@@ -735,14 +735,14 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	
 	</script>
 	
-	</html>`
+	</html>`;
 
 
 
 }
 
 // reset breakpoints in VSCode, Debug Adapter, GDB
-function removeAllCliBreakpoints(){ 
+function removeAllCliBreakpoints(){
 	vscode.commands.executeCommand("workbench.debug.viewlet.action.removeAllBreakpoints");//VSCode
 	vscode.debug.activeDebugSession?.customRequest("removeAllCliBreakpoints");//Debug Adapter, GDB
 }
@@ -750,7 +750,7 @@ function removeAllCliBreakpoints(){
 
 function getDebugPanelInfo() {
 
-	let result = {
+	const result = {
 		registers: [{ number: "unknown", value: "loading" }]
 	};
 	// vscode.debug.activeDebugSession?.customRequest("registersRequest");
