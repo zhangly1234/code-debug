@@ -56,7 +56,14 @@ export interface SSHArguments {
 
 export interface IBackend {
 	load(cwd: string, target: string, procArgs: string, separateConsole: string): Thenable<any>;
-	ssh(args: SSHArguments, cwd: string, target: string, procArgs: string, separateConsole: string, attach: boolean): Thenable<any>;
+	ssh(
+		args: SSHArguments,
+		cwd: string,
+		target: string,
+		procArgs: string,
+		separateConsole: string,
+		attach: boolean
+	): Thenable<any>;
 	attach(cwd: string, executable: string, target: string): Thenable<any>;
 	connect(cwd: string, executable: string, target: string): Thenable<any>;
 	start(runToStart: boolean): Thenable<boolean>;
@@ -117,18 +124,20 @@ export class VariableObject {
 	}
 
 	public isCompound(): boolean {
-		return this.numchild > 0 ||
+		return (
+			this.numchild > 0 ||
 			this.value === "{...}" ||
-			(this.dynamic && (this.displayhint === "array" || this.displayhint === "map"));
+			(this.dynamic && (this.displayhint === "array" || this.displayhint === "map"))
+		);
 	}
 
 	public toProtocolVariable(): DebugProtocol.Variable {
 		const res: DebugProtocol.Variable = {
 			name: this.exp,
 			evaluateName: this.name,
-			value: (this.value === void 0) ? "<unknown>" : this.value,
+			value: this.value === void 0 ? "<unknown>" : this.value,
 			type: this.type,
-			variablesReference: this.id
+			variablesReference: this.id,
 		};
 		return res;
 	}
@@ -145,18 +154,18 @@ export interface MIErrorConstructor {
 	readonly prototype: MIError;
 }
 
-export const MIError: MIErrorConstructor = <any> class MIError {
+export const MIError: MIErrorConstructor = <any>class MIError {
 	readonly name: string;
 	readonly message: string;
 	readonly source: string;
 	public constructor(message: string, source: string) {
-		Object.defineProperty(this, 'name', {
+		Object.defineProperty(this, "name", {
 			get: () => (this.constructor as any).name,
 		});
-		Object.defineProperty(this, 'message', {
+		Object.defineProperty(this, "message", {
 			get: () => message,
 		});
-		Object.defineProperty(this, 'source', {
+		Object.defineProperty(this, "source", {
 			get: () => source,
 		});
 		Error.captureStackTrace(this, this.constructor);

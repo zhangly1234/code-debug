@@ -18,8 +18,7 @@ export class MI2_Mago extends MI2_LLDB {
 					const file = MINode.valueOf(element, "fullname");
 					let line = 0;
 					const lnstr = MINode.valueOf(element, "line");
-					if (lnstr)
-						line = parseInt(lnstr);
+					if (lnstr) line = parseInt(lnstr);
 					const from = parseInt(MINode.valueOf(element, "from"));
 					ret.push({
 						address: addr,
@@ -27,17 +26,16 @@ export class MI2_Mago extends MI2_LLDB {
 						file: file || "<unknown>",
 						function: func || from || "<unknown>",
 						level: level,
-						line: line
+						line: line,
 					});
 				};
-				stack.forEach(element => {
+				stack.forEach((element) => {
 					if (element)
 						if (element[0] == "stack") {
 							addToStack(element[1]);
 						} else remaining.push(element);
 				});
-				if (remaining.length)
-					addToStack(remaining);
+				if (remaining.length) addToStack(remaining);
 				resolve(ret);
 			}, reject);
 		});
