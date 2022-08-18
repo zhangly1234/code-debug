@@ -1,10 +1,22 @@
-import { MI2DebugSession, RunCommand } from './mibase';
-import { DebugSession, InitializedEvent, TerminatedEvent, StoppedEvent, OutputEvent, Thread, StackFrame, Scope, Source, Handles } from 'vscode-debugadapter';
-import { DebugProtocol } from 'vscode-debugprotocol';
+import { MI2DebugSession, RunCommand } from "./mibase";
+import {
+	DebugSession,
+	InitializedEvent,
+	TerminatedEvent,
+	StoppedEvent,
+	OutputEvent,
+	Thread,
+	StackFrame,
+	Scope,
+	Source,
+	Handles,
+} from "vscode-debugadapter";
+import { DebugProtocol } from "vscode-debugprotocol";
 import { MI2_Mago } from "./backend/mi2/mi2mago";
-import { SSHArguments, ValuesFormattingMode } from './backend/backend';
+import { SSHArguments, ValuesFormattingMode } from "./backend/backend";
 
-export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
+export interface LaunchRequestArguments
+	extends DebugProtocol.LaunchRequestArguments {
 	cwd: string;
 	target: string;
 	magomipath: string;
@@ -17,7 +29,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
 	showDevDebugOutput: boolean;
 }
 
-export interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments {
+export interface AttachRequestArguments
+	extends DebugProtocol.AttachRequestArguments {
 	cwd: string;
 	target: string;
 	magomipath: string;
@@ -32,11 +45,17 @@ export interface AttachRequestArguments extends DebugProtocol.AttachRequestArgum
 }
 
 class MagoDebugSession extends MI2DebugSession {
-	public constructor(debuggerLinesStartAt1: boolean, isServer: boolean = false) {
+	public constructor(
+		debuggerLinesStartAt1: boolean,
+		isServer: boolean = false
+	) {
 		super(debuggerLinesStartAt1, isServer);
 	}
 
-	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
+	protected initializeRequest(
+		response: DebugProtocol.InitializeResponse,
+		args: DebugProtocol.InitializeRequestArguments
+	): void {
 		response.body.supportsHitConditionalBreakpoints = true;
 		response.body.supportsConfigurationDoneRequest = true;
 		response.body.supportsConditionalBreakpoints = true;
@@ -49,8 +68,16 @@ class MagoDebugSession extends MI2DebugSession {
 		return 0;
 	}
 
-	protected launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
-		this.miDebugger = new MI2_Mago(args.magomipath || "mago-mi", ["-q"], args.debugger_args, args.env);
+	protected launchRequest(
+		response: DebugProtocol.LaunchResponse,
+		args: LaunchRequestArguments
+	): void {
+		this.miDebugger = new MI2_Mago(
+			args.magomipath || "mago-mi",
+			["-q"],
+			args.debugger_args,
+			args.env
+		);
 		this.initDebugger();
 		this.quit = false;
 		this.attached = false;
@@ -61,28 +88,40 @@ class MagoDebugSession extends MI2DebugSession {
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
-		this.miDebugger.load(args.cwd, args.target, args.arguments, undefined).then(() => {
-			if (args.autorun)
-				args.autorun.forEach(command => {
-					this.miDebugger.sendUserInput(command);
-				});
-			this.sendResponse(response);
-		});
+		this.miDebugger
+			.load(args.cwd, args.target, args.arguments, undefined)
+			.then(() => {
+				if (args.autorun)
+					args.autorun.forEach((command) => {
+						this.miDebugger.sendUserInput(command);
+					});
+				this.sendResponse(response);
+			});
 	}
 
-	protected attachRequest(response: DebugProtocol.AttachResponse, args: AttachRequestArguments): void {
-		this.miDebugger = new MI2_Mago(args.magomipath || "mago-mi", [], args.debugger_args, args.env);
+	protected attachRequest(
+		response: DebugProtocol.AttachResponse,
+		args: AttachRequestArguments
+	): void {
+		this.miDebugger = new MI2_Mago(
+			args.magomipath || "mago-mi",
+			[],
+			args.debugger_args,
+			args.env
+		);
 		this.initDebugger();
 		this.quit = false;
 		this.attached = true;
-		this.initialRunCommand = args.stopAtConnect ? RunCommand.NONE : RunCommand.CONTINUE;
+		this.initialRunCommand = args.stopAtConnect
+			? RunCommand.NONE
+			: RunCommand.CONTINUE;
 		this.isSSH = false;
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
 		this.miDebugger.attach(args.cwd, args.executable, args.target).then(() => {
 			if (args.autorun)
-				args.autorun.forEach(command => {
+				args.autorun.forEach((command) => {
 					this.miDebugger.sendUserInput(command);
 				});
 			this.sendResponse(response);
