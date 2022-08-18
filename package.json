@@ -473,6 +473,34 @@
 										"description": "Content will be executed on the SSH host before the debugger call."
 									}
 								}
+							},
+							"qemuPath": {
+								"type": "string",
+								"description": "Path to qemu executable",
+								"default": "qemu-system-riscv64"
+							},
+							"qemuArgs": {
+								"type": "array",
+								"description": "Cmdline args which will be passed to qemu",
+								"default": [
+									"-M 128m",
+									"-machine virt",
+									"-bios ${PROJECT_PATH}/bootloader/rustsbi-qemu.bin",
+									"-display none",
+									"-device loader,file=${KERNEL_BIN},addr=0x80200000",
+									"-drive file=${FS_IMG},if=none,format=raw,id=x0",
+									"-device virtio-blk-device,drive=x0",
+									"-device virtio-gpu-device",
+									"-device virtio-keyboard-device",
+									"-device virtio-mouse-device",
+									"-serial stdio",
+									"-s -S"
+								]
+							},
+							"userDebugFile": {
+								"type": "string",
+								"description": "userspace executable name which will be debugged",
+								"default": "qemu-system-riscv64"
 							}
 						}
 					}
