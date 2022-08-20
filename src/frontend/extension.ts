@@ -12,15 +12,12 @@ import { resolve } from "dns";
 import { rejects } from "assert";
 import { Z_NO_COMPRESSION } from "zlib";
 import { riscvRegNames } from "./webview";
-import { startupCmd } from "./fakeMakefile";
 
 export function activate(context: vscode.ExtensionContext) {
 	let NEXT_TERM_ID = 1;
 	context.subscriptions.push(
 		vscode.commands.registerCommand("core-debugger.launchCoreDebugger", () => {
 			vscode.commands.executeCommand("core-debugger.startPanel"); //当启动插件时
-			const terminal = vscode.window.createTerminal(`CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`); //创建新终端
-			terminal.sendText(startupCmd); //启动qemu
 			vscode.commands.executeCommand("workbench.action.debug.start");
 		})
 	);
@@ -129,6 +126,7 @@ export function activate(context: vscode.ExtensionContext) {
 			// })
 		})
 	);
+
 	const disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
 		createDebugAdapterTracker() {
 			return {
@@ -804,3 +802,4 @@ function getDebugPanelInfo() {
 
 	//return JSON.stringify(result.registers);
 }
+

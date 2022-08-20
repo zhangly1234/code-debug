@@ -131,24 +131,7 @@
 				"languages": [
 					"c",
 					"cpp",
-					"d",
-					"objective-c",
-					"fortran",
-					"fortran-modern",
-					"fortran90",
-					"fortran_free-form",
-					"fortran_fixed-form",
-					"rust",
-					"pascal",
-					"objectpascal",
-					"ada",
-					"nim",
-					"arm",
-					"asm",
-					"vala",
-					"crystal",
-					"kotlin",
-					"zig"
+					"rust"
 				],
 				"variables": {
 					"FileBasenameNoExt": "code-debug.getFileBasenameNoExt",
@@ -483,24 +466,26 @@
 								"type": "array",
 								"description": "Cmdline args which will be passed to qemu",
 								"default": [
-									"-M 128m",
-									"-machine virt",
-									"-bios ${PROJECT_PATH}/bootloader/rustsbi-qemu.bin",
-									"-display none",
-									"-device loader,file=${KERNEL_BIN},addr=0x80200000",
-									"-drive file=${FS_IMG},if=none,format=raw,id=x0",
-									"-device virtio-blk-device,drive=x0",
-									"-device virtio-gpu-device",
-									"-device virtio-keyboard-device",
-									"-device virtio-mouse-device",
-									"-serial stdio",
-									"-s -S"
+									"-M", "128m",
+									"-machine", "virt",
+									"-bios", "${userHome}/rCore-Tutorial-v3/bootloader/rustsbi-qemu.bin",
+									"-display", "none",
+									"-device", "loader,file=${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os.bin,addr=0x80200000",
+									"-drive", "file=${userHome}/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/fs.img,if=none,format=raw,id=x0",
+									"-device", "virtio-blk-device,drive=x0",
+									"-device", "virtio-gpu-device",
+									"-device", "virtio-keyboard-device",
+									"-device", "virtio-mouse-device",
+									"-serial", "stdio",
+									"-s", "-S"
 								]
 							},
-							"userDebugFile": {
-								"type": "string",
+							"userSpaceDebuggeeFiles": {
+								"type": "array",
 								"description": "userspace executable name which will be debugged",
-								"default": "qemu-system-riscv64"
+								"default": [
+									"initproc"
+								]
 							}
 						}
 					}

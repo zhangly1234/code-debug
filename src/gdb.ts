@@ -34,6 +34,9 @@ export interface LaunchRequestArguments
 	valuesFormatting: ValuesFormattingMode;
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
+	qemuPath: string,
+	qemuArgs: string[],
+	userSpaceDebuggeeFiles: string[],
 }
 
 export interface AttachRequestArguments
@@ -54,6 +57,8 @@ export interface AttachRequestArguments
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
 }
+
+let NEXT_TERM_ID = 1;
 export class GDBDebugSession extends MI2DebugSession {
 	protected initializeRequest(
 		response: DebugProtocol.InitializeResponse,
@@ -74,6 +79,21 @@ export class GDBDebugSession extends MI2DebugSession {
 		response: DebugProtocol.LaunchResponse,
 		args: LaunchRequestArguments
 	): void {
+
+		const converted_args = this.getQemuLaunchCmd(args);
+		if (converted_args.length == 0) {
+			this.sendErrorResponse(response, 103, "`qemuPath` and `qemuArgs` property must be set in `launch.json`");
+			return;
+		}
+
+		this.runInTerminalRequest({
+			kind: 'integrated',
+			title: `CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`,
+			cwd: '',
+			args: converted_args,
+			env: null}, 10, null
+		)
+
 		this.miDebugger = new MI2(
 			args.gdbpath || "gdb",
 			["-q", "--interpreter=mi2"],
@@ -260,6 +280,19 @@ export class GDBDebugSession extends MI2DebugSession {
 			});
 		}
 	}
+
+
+	private getQemuLaunchCmd(args: LaunchRequestArguments): string[] {
+		if (!args.qemuArgs?.length || !args.qemuPath?.length) {
+			return []
+		}
+		let r = [
+			args.qemuPath
+		];
+		r = r.concat(args.qemuArgs);
+		return r;
+	}
+
 }
 
 DebugSession.run(GDBDebugSession);
