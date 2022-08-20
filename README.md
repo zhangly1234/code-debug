@@ -402,8 +402,8 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
     "configurations": [
         {
             "type": "gdb",
-            "request": "attach",
-            "name": "Attach to Qemu",
+            "request": "launch",
+            "name": "Launch Qemu and attach debugger",
             "executable": "此处修改为rCore-Tutorial-v3所在目录/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
             "target": ":1234",
             "remote": true,

@@ -25,7 +25,10 @@ export interface LaunchRequestArguments
 	pathSubstitutions: { [index: string]: string };
 	arguments: string;
 	terminal: string;
+	executable: string;
+	remote: boolean;
 	autorun: string[];
+	stopAtConnect: boolean;
 	stopAtEntry: boolean | string;
 	ssh: SSHArguments;
 	valuesFormatting: ValuesFormattingMode;
@@ -51,7 +54,6 @@ export interface AttachRequestArguments
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
 }
-
 export class GDBDebugSession extends MI2DebugSession {
 	protected initializeRequest(
 		response: DebugProtocol.InitializeResponse,
@@ -81,11 +83,11 @@ export class GDBDebugSession extends MI2DebugSession {
 		this.setPathSubstitutions(args.pathSubstitutions);
 		this.initDebugger();
 		this.quit = false;
-		this.attached = false;
-		this.initialRunCommand = RunCommand.RUN;
+		this.attached = !args.remote;
+		this.initialRunCommand = args.stopAtConnect
+			? RunCommand.NONE
+			: RunCommand.CONTINUE;
 		this.isSSH = false;
-		this.started = false;
-		this.crashed = false;
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
@@ -99,14 +101,7 @@ export class GDBDebugSession extends MI2DebugSession {
 			this.isSSH = true;
 			this.setSourceFileMap(args.ssh.sourceFileMap, args.ssh.cwd, args.cwd);
 			this.miDebugger
-				.ssh(
-					args.ssh,
-					args.ssh.cwd,
-					args.target,
-					args.arguments,
-					args.terminal,
-					false
-				)
+				.ssh(args.ssh, args.ssh.cwd, args.target, "", undefined, true)
 				.then(
 					() => {
 						if (args.autorun)
@@ -124,9 +119,8 @@ export class GDBDebugSession extends MI2DebugSession {
 					}
 				);
 		} else {
-			this.miDebugger
-				.load(args.cwd, args.target, args.arguments, args.terminal)
-				.then(
+			if (args.remote) {
+				this.miDebugger.connect(args.cwd, args.executable, args.target).then(
 					() => {
 						if (args.autorun)
 							args.autorun.forEach((command) => {
@@ -137,11 +131,29 @@ export class GDBDebugSession extends MI2DebugSession {
 					(err) => {
 						this.sendErrorResponse(
 							response,
-							103,
-							`Failed to load MI Debugger: ${err.toString()}`
+							102,
+							`Failed to attach: ${err.toString()}`
 						);
 					}
 				);
+			} else {
+				this.miDebugger.attach(args.cwd, args.executable, args.target).then(
+					() => {
+						if (args.autorun)
+							args.autorun.forEach((command) => {
+								this.miDebugger.sendUserInput(command);
+							});
+						this.sendResponse(response);
+					},
+					(err) => {
+						this.sendErrorResponse(
+							response,
+							101,
+							`Failed to attach: ${err.toString()}`
+						);
+					}
+				);
+			}
 		}
 	}
 
