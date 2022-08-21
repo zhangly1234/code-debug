@@ -23,7 +23,6 @@
 		"onCommand:code-debug.getFileBasenameNoExt",
 		"onCommand:core-debugger.startPanel",
 		"onCommand:core-debugger.updatePanel",
-		"onCommand:core-debugger.launchCoreDebugger",
 		"onDebug"
 	],
 	"categories": [
@@ -45,11 +44,6 @@
 				"title": "Code-Debug: Examine memory location"
 			},
 			{
-				"command": "core-debugger.launchCoreDebugger",
-				"title": "launch  CoreDebugger",
-				"category": "CoreDebugger"
-			},
-			{
 				"command": "core-debugger.startPanel",
 				"title": "Start new core-debugger panel",
 				"category": "CoreDebugger"
@@ -68,58 +62,7 @@
 				"language": "cpp"
 			},
 			{
-				"language": "d"
-			},
-			{
-				"language": "objective-c"
-			},
-			{
-				"language": "fortran"
-			},
-			{
-				"language": "fortran-modern"
-			},
-			{
-				"language": "fortran90"
-			},
-			{
-				"language": "fortran_free-form"
-			},
-			{
-				"language": "fortran_fixed-form"
-			},
-			{
 				"language": "rust"
-			},
-			{
-				"language": "pascal"
-			},
-			{
-				"language": "objectpascal"
-			},
-			{
-				"language": "ada"
-			},
-			{
-				"language": "nim"
-			},
-			{
-				"language": "arm"
-			},
-			{
-				"language": "asm"
-			},
-			{
-				"language": "vala"
-			},
-			{
-				"language": "crystal"
-			},
-			{
-				"language": "kotlin"
-			},
-			{
-				"language": "zig"
 			}
 		],
 		"debuggers": [

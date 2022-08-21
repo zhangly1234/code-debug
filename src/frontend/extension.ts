@@ -14,13 +14,11 @@ import { Z_NO_COMPRESSION } from "zlib";
 import { riscvRegNames } from "./webview";
 
 export function activate(context: vscode.ExtensionContext) {
-	let NEXT_TERM_ID = 1;
-	context.subscriptions.push(
-		vscode.commands.registerCommand("core-debugger.launchCoreDebugger", () => {
-			vscode.commands.executeCommand("core-debugger.startPanel"); //当启动插件时
-			vscode.commands.executeCommand("workbench.action.debug.start");
-		})
-	);
+
+	vscode.debug.onDidStartDebugSession((e:vscode.DebugSession) => {
+		vscode.commands.executeCommand("core-debugger.startPanel"); //当启动调试会话时
+	});
+
 	context.subscriptions.push(
 		vscode.workspace.registerTextDocumentContentProvider("debugmemory", new MemoryContentProvider())
 	);

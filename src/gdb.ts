@@ -91,8 +91,7 @@ export class GDBDebugSession extends MI2DebugSession {
 			title: `CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`,
 			cwd: '',
 			args: converted_args,
-			env: null}, 10, null
-		)
+		}, 10, undefined);
 
 		this.miDebugger = new MI2(
 			args.gdbpath || "gdb",
@@ -284,7 +283,7 @@ export class GDBDebugSession extends MI2DebugSession {
 
 	private getQemuLaunchCmd(args: LaunchRequestArguments): string[] {
 		if (!args.qemuArgs?.length || !args.qemuPath?.length) {
-			return []
+			return [];
 		}
 		let r = [
 			args.qemuPath

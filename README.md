@@ -395,6 +395,10 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 1. 确保/src/mibase.ts/-MI2DebugSession-customRequest方法-`case setKernelInOutBreakpoints`中硬编码的文件名和行数指向rCore代码中内核的出入口
 1. 按f5启动插件
 1. 在弹出的新窗口内打开rCore-Tutorial-v3文件夹，创建launch.json（选GDB）（可根据自己需要修改）: 
+    * 重点注意`qemuPath`和`qemuArgs`两个参数。
+        * `qemuPath`用于指定qemu可执行文件的路径，如果qemu可执行文件已经在系统的PATH环境变量中，那么这里就不需要写绝对路径。
+        * `qemuArgs` 用来拼接启动qemu时所需要的命令行参数。例如对于一些实验而言，可能没有文件系统的块设备，也不需要GPU支持，那么可以把相应的命令行参数删掉。
+    * 注意，下面的配置文件假定被调试的项目放在`${userHome}/rCore-Tutorial-v3`目录下，如果您是使用的docker镜像，那么不用调整，如果是自己手动搭建的开发环境，请把相应的路径配置进行调整。
 
 ```json
 {
@@ -403,26 +407,53 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
         {
             "type": "gdb",
             "request": "launch",
-            "name": "Launch Qemu and attach debugger",
-            "executable": "此处修改为rCore-Tutorial-v3所在目录/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
+            "name": "Attach to Qemu",
+            "executable": "${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
             "target": ":1234",
             "remote": true,
             "cwd": "${workspaceRoot}",
             "valuesFormatting": "parseText",
-            "gdbpath": "此处修改为工具链所在目录/riscv64-unknown-elf-toolchain-10.2.0-2020.12.8-x86_64-linux-ubuntu14/bin/riscv64-unknown-elf-gdb",
+            "gdbpath": "riscv64-unknown-elf-gdb",
             "showDevDebugOutput":true,
             "internalConsoleOptions": "openOnSessionStart",
             "printCalls": true,
-            "stopAtConnect": true
+            "stopAtConnect": true,
+            "qemuPath": "qemu-system-riscv64",
+            "qemuArgs": [
+                "-M",
+                "128m",
+                "-machine",
+                "virt",
+                "-bios",
+                "${userHome}/rCore-Tutorial-v3/bootloader/rustsbi-qemu.bin",
+                "-display",
+                "none",
+                "-device",
+                "loader,file=${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os.bin,addr=0x80200000",
+                "-drive",
+                "file=${userHome}/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/fs.img,if=none,format=raw,id=x0",
+                "-device",
+                "virtio-blk-device,drive=x0",
+                "-device",
+                "virtio-gpu-device",
+                "-device",
+                "virtio-keyboard-device",
+                "-device",
+                "virtio-mouse-device",
+                "-serial",
+                "stdio",
+                "-s",
+                "-S"
+            ]
         },
     ]
 }
-
 ```
 
 ### 使用
-1. 在code-debug文件夹下`git pull`更新软件仓库
-1. 在打开的新窗口内`Ctrl+Shift+P`找到并点击`CoreDebugger:Launch Coredebugger`
+1. 在code-debug文件夹下`git pull`更新软件仓库，确保代码是最新的，然后按F5运行插件，这时会打开一个新的VSCode窗口。 **后续操作步骤均在新窗口内完成！**
+1. 在新窗口内，按照上面的提示配置`launch.json`并保存。
+1. 按F5键，即可开始使用本插件。
 1. 清除所有断点（removeAllCliBreakpoints按钮）
 1. 设置内核入口、出口断点（setKernelInOutBreakpoints按钮）
 1. 设置内核代码和用户程序代码的断点（推荐initproc.rs的println!语句）
