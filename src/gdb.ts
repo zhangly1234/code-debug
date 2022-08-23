@@ -92,7 +92,7 @@ export class GDBDebugSession extends MI2DebugSession {
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
 		this.stopAtEntry = args.stopAtEntry;
-		
+
 		if (args.remote) {
 			this.miDebugger.connect(args.cwd, args.executable, args.target).then(
 				() => {
@@ -128,9 +128,9 @@ export class GDBDebugSession extends MI2DebugSession {
 				}
 			);
 		}
-		
+
 	}
-	
+
 	// Add extra commands for source file path substitution in GDB-specific syntax
 	protected setPathSubstitutions(substitutions: {
 		[index: string]: string;

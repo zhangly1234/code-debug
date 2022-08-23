@@ -383,7 +383,6 @@ export class MI2 extends EventEmitter implements IBackend {
 	}
 
 	stop() {
-		
 		const proc = this.process;
 		const to = setTimeout(() => {
 			process.kill(-proc.pid);
@@ -392,7 +391,6 @@ export class MI2 extends EventEmitter implements IBackend {
 			clearTimeout(to);
 		});
 		this.sendRaw("-gdb-exit");
-		
 	}
 
 	detach() {
