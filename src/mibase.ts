@@ -117,11 +117,7 @@ class AddressSpaces{
 		});
 		this.spaces[newIndex].setBreakpointsArguments.forEach(args=>{
 			this.debugSession.miDebugger.clearBreakPoints(args.source.path).then(() => {
-				let path = args.source.path;
-				if (this.debugSession.isSSH) {
-					// convert local path to ssh path
-					path = this.debugSession.sourceFileMap.toRemotePath(path);
-				}
+				const path = args.source.path;
 				const all = args.breakpoints.map(brk => {
 					return this.debugSession.miDebugger.addBreakPoint({ file: path, line: brk.line, condition: brk.condition, countCondition: brk.hitCondition });
 				});
@@ -181,7 +177,6 @@ export class MI2DebugSession extends DebugSession {
 	protected attached: boolean;
 	protected initialRunCommand: RunCommand;
 	protected stopAtEntry: boolean | string;
-	public isSSH: boolean;
 	public sourceFileMap: SourceFileMap;
 	protected started: boolean;
 	protected crashed: boolean;
@@ -406,11 +401,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 	//设置某一个文件的所有断点
 	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
 		this.miDebugger.clearBreakPoints(args.source.path).then(() => { //清空该文件的断点
-			let path = args.source.path;
-			if (this.isSSH) {
-				// convert local path to ssh path
-				path = this.sourceFileMap.toRemotePath(path);
-			}
+			const path = args.source.path;
 			//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），
 			//暂时不通知GDB设置断点
 			const spaceName = this.addressSpaces.pathToSpaceName(path);
@@ -480,10 +471,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				let source = undefined;
 				let path = element.file;
 				if (path) {
-					if (this.isSSH) {
-						// convert ssh path to local path
-						path = this.sourceFileMap.toLocalPath(path);
-					} else if (process.platform === "win32") {
+					if (process.platform === "win32") {
 						if (path.startsWith("\\cygdrive\\") || path.startsWith("/cygdrive/")) {
 							path = path[10] + ":" + path.substring(11); // replaces /cygdrive/c/foo/bar.txt with c:/foo/bar.txt
 						}
@@ -924,7 +912,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 	}
 
 	protected gotoTargetsRequest(response: DebugProtocol.GotoTargetsResponse, args: DebugProtocol.GotoTargetsArguments): void {
-		const path: string = this.isSSH ? this.sourceFileMap.toRemotePath(args.source.path) : args.source.path;
+		const path: string = args.source.path;
 		this.miDebugger.goto(path, args.line).then(done => {
 			response.body = {
 				targets: [{
