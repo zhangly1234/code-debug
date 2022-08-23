@@ -3,7 +3,6 @@ import {
 	IBackend,
 	Thread,
 	Stack,
-	SSHArguments,
 	Variable,
 	VariableObject,
 	MIError,
@@ -16,7 +15,6 @@ import * as linuxTerm from "../linux/console";
 import * as net from "net";
 import * as fs from "fs";
 import * as path from "path";
-import { Client } from "ssh2";
 import { riscvRegNames } from "../../frontend/webview";
 
 export function escape(str: string) {
@@ -64,7 +62,6 @@ export class MI2 extends EventEmitter implements IBackend {
 	load(cwd: string, target: string, procArgs: string, separateConsole: string): Thenable<any> {
 		if (!path.isAbsolute(target)) target = path.join(cwd, target);
 		return new Promise((resolve, reject) => {
-			this.isSSH = false;
 			const args = this.preargs.concat(this.extraargs || []);
 			this.process = ChildProcess.spawn(this.application, args, { cwd: cwd, env: this.procEnv });
 			this.process.stdout.on("data", this.stdout.bind(this));
@@ -107,123 +104,6 @@ export class MI2 extends EventEmitter implements IBackend {
 					}, reject);
 				}
 			}
-		});
-	}
-
-	ssh(
-		args: SSHArguments,
-		cwd: string,
-		target: string,
-		procArgs: string,
-		separateConsole: string,
-		attach: boolean
-	): Thenable<any> {
-		return new Promise((resolve, reject) => {
-			this.isSSH = true;
-			this.sshReady = false;
-			this.sshConn = new Client();
-
-			if (separateConsole !== undefined)
-				this.log("stderr", "WARNING: Output to terminal emulators are not supported over SSH");
-
-			if (args.forwardX11) {
-				this.sshConn.on("x11", (info, accept, reject) => {
-					const xserversock = new net.Socket();
-					xserversock.on("error", (err) => {
-						this.log(
-							"stderr",
-							"Could not connect to local X11 server! Did you enable it in your display manager?\n" +
-								err
-						);
-					});
-					xserversock.on("connect", () => {
-						const xclientsock = accept();
-						xclientsock.pipe(xserversock).pipe(xclientsock);
-					});
-					xserversock.connect(args.x11port, args.x11host);
-				});
-			}
-
-			const connectionArgs: any = {
-				host: args.host,
-				port: args.port,
-				username: args.user,
-			};
-
-			if (args.useAgent) {
-				connectionArgs.agent = process.env.SSH_AUTH_SOCK;
-			} else if (args.keyfile) {
-				if (fs.existsSync(args.keyfile)) connectionArgs.privateKey = fs.readFileSync(args.keyfile);
-				else {
-					this.log("stderr", "SSH key file does not exist!");
-					this.emit("quit");
-					reject();
-					return;
-				}
-			} else {
-				connectionArgs.password = args.password;
-			}
-
-			this.sshConn
-				.on("ready", () => {
-					this.log("stdout", "Running " + this.application + " over ssh...");
-					const execArgs: any = {};
-					if (args.forwardX11) {
-						execArgs.x11 = {
-							single: false,
-							screen: args.remotex11screen,
-						};
-					}
-					let sshCMD = this.application + " " + this.preargs.concat(this.extraargs || []).join(" ");
-					if (args.bootstrap) sshCMD = args.bootstrap + " && " + sshCMD;
-					this.sshConn.exec(sshCMD, execArgs, (err, stream) => {
-						if (err) {
-							this.log(
-								"stderr",
-								"Could not run " + this.application + "(" + sshCMD + ") over ssh!"
-							);
-							if (err === undefined) {
-								err = "<reason unknown>";
-							}
-							this.log("stderr", err.toString());
-							this.emit("quit");
-							reject();
-							return;
-						}
-						this.sshReady = true;
-						this.stream = stream;
-						stream.on("data", this.stdout.bind(this));
-						stream.stderr.on("data", this.stderr.bind(this));
-						stream.on(
-							"exit",
-							(() => {
-								this.emit("quit");
-								this.sshConn.end();
-							}).bind(this)
-						);
-						const promises = this.initCommands(target, cwd, attach);
-						promises.push(this.sendCommand('environment-cd "' + escape(cwd) + '"'));
-						if (attach) {
-							// Attach to local process
-							promises.push(this.sendCommand("target-attach " + target));
-						} else if (procArgs && procArgs.length)
-							promises.push(this.sendCommand("exec-arguments " + procArgs));
-						Promise.all(promises).then(() => {
-							this.emit("debug-ready");
-							resolve(undefined);
-						}, reject);
-					});
-				})
-				.on("error", (err) => {
-					this.log("stderr", "Error running " + this.application + " over ssh!");
-					if (err === undefined) {
-						err = "<reason unknown>";
-					}
-					this.log("stderr", err.toString());
-					this.emit("quit");
-					reject();
-				})
-				.connect(connectionArgs);
 		});
 	}
 
@@ -503,25 +383,16 @@ export class MI2 extends EventEmitter implements IBackend {
 	}
 
 	stop() {
-		if (this.isSSH) {
-			const proc = this.stream;
-			const to = setTimeout(() => {
-				proc.signal("KILL");
-			}, 1000);
-			this.stream.on("exit", function (code) {
-				clearTimeout(to);
-			});
-			this.sendRaw("-gdb-exit");
-		} else {
-			const proc = this.process;
-			const to = setTimeout(() => {
-				process.kill(-proc.pid);
-			}, 1000);
-			this.process.on("exit", function (code) {
-				clearTimeout(to);
-			});
-			this.sendRaw("-gdb-exit");
-		}
+		
+		const proc = this.process;
+		const to = setTimeout(() => {
+			process.kill(-proc.pid);
+		}, 1000);
+		this.process.on("exit", function (code) {
+			clearTimeout(to);
+		});
+		this.sendRaw("-gdb-exit");
+		
 	}
 
 	detach() {
@@ -748,8 +619,7 @@ export class MI2 extends EventEmitter implements IBackend {
 			const filename = MINode.valueOf(element, "@frame.file");
 			let file: string = MINode.valueOf(element, "@frame.fullname");
 			if (file) {
-				if (this.isSSH) file = path.posix.normalize(file);
-				else file = path.normalize(file);
+				file = path.normalize(file);
 			}
 
 			let line = 0;
@@ -928,8 +798,7 @@ export class MI2 extends EventEmitter implements IBackend {
 
 	sendRaw(raw: string) {
 		if (this.printCalls) this.log("log", raw);
-		if (this.isSSH) this.stream.write(raw + "\n");
-		else this.process.stdin.write(raw + "\n");
+		this.process.stdin.write(raw + "\n");
 	}
 
 	sendCliCommand(command: string, threadId: number = 0, frameLevel: number = 0): Thenable<MINode> {
@@ -957,7 +826,7 @@ export class MI2 extends EventEmitter implements IBackend {
 	}
 
 	isReady(): boolean {
-		return this.isSSH ? this.sshReady : !!this.process;
+		return !!this.process;
 	}
 
 	protected quote(text: string): string {
@@ -970,8 +839,6 @@ export class MI2 extends EventEmitter implements IBackend {
 	debugOutput: boolean;
 	features: string[];
 	public procEnv: any;
-	protected isSSH: boolean;
-	protected sshReady: boolean;
 	protected currentToken: number = 1;
 	protected handlers: { [index: number]: (info: MINode) => any } = {};
 	protected breakpoints: Map<Breakpoint, Number> = new Map();
@@ -979,5 +846,4 @@ export class MI2 extends EventEmitter implements IBackend {
 	protected errbuf: string;
 	protected process: ChildProcess.ChildProcess;
 	protected stream;
-	protected sshConn;
 }

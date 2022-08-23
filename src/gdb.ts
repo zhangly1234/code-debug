@@ -13,7 +13,7 @@ import {
 } from "vscode-debugadapter";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { MI2, escape } from "./backend/mi2/mi2";
-import { SSHArguments, ValuesFormattingMode } from "./backend/backend";
+import {ValuesFormattingMode } from "./backend/backend";
 
 export interface LaunchRequestArguments
 	extends DebugProtocol.LaunchRequestArguments {
@@ -30,7 +30,6 @@ export interface LaunchRequestArguments
 	autorun: string[];
 	stopAtConnect: boolean;
 	stopAtEntry: boolean | string;
-	ssh: SSHArguments;
 	valuesFormatting: ValuesFormattingMode;
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
@@ -39,24 +38,6 @@ export interface LaunchRequestArguments
 	userSpaceDebuggeeFiles: string[],
 }
 
-export interface AttachRequestArguments
-	extends DebugProtocol.AttachRequestArguments {
-	cwd: string;
-	target: string;
-	gdbpath: string;
-	env: any;
-	debugger_args: string[];
-	pathSubstitutions: { [index: string]: string };
-	executable: string;
-	remote: boolean;
-	autorun: string[];
-	stopAtConnect: boolean;
-	stopAtEntry: boolean | string;
-	ssh: SSHArguments;
-	valuesFormatting: ValuesFormattingMode;
-	printCalls: boolean;
-	showDevDebugOutput: boolean;
-}
 
 let NEXT_TERM_ID = 1;
 export class GDBDebugSession extends MI2DebugSession {
@@ -106,163 +87,50 @@ export class GDBDebugSession extends MI2DebugSession {
 		this.initialRunCommand = args.stopAtConnect
 			? RunCommand.NONE
 			: RunCommand.CONTINUE;
-		this.isSSH = false;
+
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
 		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
 		this.stopAtEntry = args.stopAtEntry;
-		if (args.ssh !== undefined) {
-			if (args.ssh.forwardX11 === undefined) args.ssh.forwardX11 = true;
-			if (args.ssh.port === undefined) args.ssh.port = 22;
-			if (args.ssh.x11port === undefined) args.ssh.x11port = 6000;
-			if (args.ssh.x11host === undefined) args.ssh.x11host = "localhost";
-			if (args.ssh.remotex11screen === undefined) args.ssh.remotex11screen = 0;
-			this.isSSH = true;
-			this.setSourceFileMap(args.ssh.sourceFileMap, args.ssh.cwd, args.cwd);
-			this.miDebugger
-				.ssh(args.ssh, args.ssh.cwd, args.target, "", undefined, true)
-				.then(
-					() => {
-						if (args.autorun)
-							args.autorun.forEach((command) => {
-								this.miDebugger.sendUserInput(command);
-							});
-						this.sendResponse(response);
-					},
-					(err) => {
-						this.sendErrorResponse(
-							response,
-							102,
-							`Failed to SSH: ${err.toString()}`
-						);
-					}
-				);
+		
+		if (args.remote) {
+			this.miDebugger.connect(args.cwd, args.executable, args.target).then(
+				() => {
+					if (args.autorun)
+						args.autorun.forEach((command) => {
+							this.miDebugger.sendUserInput(command);
+						});
+					this.sendResponse(response);
+				},
+				(err) => {
+					this.sendErrorResponse(
+						response,
+						102,
+						`Failed to attach: ${err.toString()}`
+					);
+				}
+			);
 		} else {
-			if (args.remote) {
-				this.miDebugger.connect(args.cwd, args.executable, args.target).then(
-					() => {
-						if (args.autorun)
-							args.autorun.forEach((command) => {
-								this.miDebugger.sendUserInput(command);
-							});
-						this.sendResponse(response);
-					},
-					(err) => {
-						this.sendErrorResponse(
-							response,
-							102,
-							`Failed to attach: ${err.toString()}`
-						);
-					}
-				);
-			} else {
-				this.miDebugger.attach(args.cwd, args.executable, args.target).then(
-					() => {
-						if (args.autorun)
-							args.autorun.forEach((command) => {
-								this.miDebugger.sendUserInput(command);
-							});
-						this.sendResponse(response);
-					},
-					(err) => {
-						this.sendErrorResponse(
-							response,
-							101,
-							`Failed to attach: ${err.toString()}`
-						);
-					}
-				);
-			}
+			this.miDebugger.attach(args.cwd, args.executable, args.target).then(
+				() => {
+					if (args.autorun)
+						args.autorun.forEach((command) => {
+							this.miDebugger.sendUserInput(command);
+						});
+					this.sendResponse(response);
+				},
+				(err) => {
+					this.sendErrorResponse(
+						response,
+						101,
+						`Failed to attach: ${err.toString()}`
+					);
+				}
+			);
 		}
+		
 	}
-
-	protected attachRequest(
-		response: DebugProtocol.AttachResponse,
-		args: AttachRequestArguments
-	): void {
-		this.miDebugger = new MI2(
-			args.gdbpath || "gdb",
-			["-q", "--interpreter=mi2"],
-			args.debugger_args,
-			args.env
-		);
-		this.setPathSubstitutions(args.pathSubstitutions);
-		this.initDebugger();
-		this.quit = false;
-		this.attached = !args.remote;
-		this.initialRunCommand = args.stopAtConnect
-			? RunCommand.NONE
-			: RunCommand.CONTINUE;
-		this.isSSH = false;
-		this.setValuesFormattingMode(args.valuesFormatting);
-		this.miDebugger.printCalls = !!args.printCalls;
-		this.miDebugger.debugOutput = !!args.showDevDebugOutput;
-		this.stopAtEntry = args.stopAtEntry;
-		if (args.ssh !== undefined) {
-			if (args.ssh.forwardX11 === undefined) args.ssh.forwardX11 = true;
-			if (args.ssh.port === undefined) args.ssh.port = 22;
-			if (args.ssh.x11port === undefined) args.ssh.x11port = 6000;
-			if (args.ssh.x11host === undefined) args.ssh.x11host = "localhost";
-			if (args.ssh.remotex11screen === undefined) args.ssh.remotex11screen = 0;
-			this.isSSH = true;
-			this.setSourceFileMap(args.ssh.sourceFileMap, args.ssh.cwd, args.cwd);
-			this.miDebugger
-				.ssh(args.ssh, args.ssh.cwd, args.target, "", undefined, true)
-				.then(
-					() => {
-						if (args.autorun)
-							args.autorun.forEach((command) => {
-								this.miDebugger.sendUserInput(command);
-							});
-						this.sendResponse(response);
-					},
-					(err) => {
-						this.sendErrorResponse(
-							response,
-							102,
-							`Failed to SSH: ${err.toString()}`
-						);
-					}
-				);
-		} else {
-			if (args.remote) {
-				this.miDebugger.connect(args.cwd, args.executable, args.target).then(
-					() => {
-						if (args.autorun)
-							args.autorun.forEach((command) => {
-								this.miDebugger.sendUserInput(command);
-							});
-						this.sendResponse(response);
-					},
-					(err) => {
-						this.sendErrorResponse(
-							response,
-							102,
-							`Failed to attach: ${err.toString()}`
-						);
-					}
-				);
-			} else {
-				this.miDebugger.attach(args.cwd, args.executable, args.target).then(
-					() => {
-						if (args.autorun)
-							args.autorun.forEach((command) => {
-								this.miDebugger.sendUserInput(command);
-							});
-						this.sendResponse(response);
-					},
-					(err) => {
-						this.sendErrorResponse(
-							response,
-							101,
-							`Failed to attach: ${err.toString()}`
-						);
-					}
-				);
-			}
-		}
-	}
-
+	
 	// Add extra commands for source file path substitution in GDB-specific syntax
 	protected setPathSubstitutions(substitutions: {
 		[index: string]: string;
