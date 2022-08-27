@@ -25,10 +25,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//=========================================================================================
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
-	let webviewMemState = [
-		{ from: 0x80200000, length: 16 },
-		{ from: 0x80201000, length: 32 },
-	];
 	const kernelInOutBreakpointArgs = 1;
 	const userDebugFile = "initproc"; //可以修改为其它用户程序名，如matrix
 	//========================================================================================
@@ -51,9 +47,6 @@ export function activate(context: vscode.ExtensionContext) {
 			currentPanel.webview.onDidReceiveMessage(
 				(message) => {
 					// vscode.window.showErrorMessage("message");
-					if (message.memRangeQuery) {
-						webviewMemState = message.memRangeQuery;
-					}
 					if (message.removeDebugFile) {
 						//自定义请求.customRequest函数见/src/mibase.ts
 						vscode.debug.activeDebugSession?.customRequest("removeDebugFile", {
@@ -119,10 +112,6 @@ export function activate(context: vscode.ExtensionContext) {
 							//请求寄存器信息
 							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
 							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
-							//请求内存数据
-							webviewMemState.forEach((element) => {
-								vscode.debug.activeDebugSession?.customRequest("memValuesRequest", element);
-							});
 							//更新WebView中的断点信息
 							vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
 						} //处理自定义事件
@@ -133,12 +122,9 @@ export function activate(context: vscode.ExtensionContext) {
 							currentPanel.webview.postMessage({ regValues: message.body });
 						} else if (message.event === "updateRegistersNamesEvent") {
 							currentPanel.webview.postMessage({ regNames: message.body });
-						} else if (message.event === "memValues") {
-							currentPanel.webview.postMessage({ memValues: message.body });
 						}
 						//到达内核态->用户态的边界
 						else if (message.event === "kernelToUserBorder") {
-							webviewMemState = []; //TODO applyMemStateSet
 							// removeAllCliBreakpoints();
 							vscode.window.showInformationMessage("switched to " + userDebugFile + " breakpoints");
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
@@ -309,7 +295,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			<nav class="navbar  navbar-fixed-top">
 				<ul class="nav nav-tabs">
 					<li role="presentation" class="active" id="nav_reg"><a href="#">Regester</a></li>
-					<li role="presentation"><a href="#" id="nav_mem">Memory</a></li>
 					<li role="presentation"><a href="#" id="nav_bre">Breakpoint</a></li>
 				</ul>
 			</nav>
@@ -344,22 +329,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 				</table>
 			</div>
 	
-			<!--  存储器 -->
-			<div class="table-responsive" id="div_mem">
-				<table class="table table-striped table-sm">
-					<thead>
-						<tr>
-							<th>data</th>
-							<th>from</th>
-							<th>length</th>
-						</tr>
-					</thead>
-	
-					<tbody id="mem">
-					</tbody>
-				</table>
-			</div>
-	
 			<!--  断点 -->
 			<div id="breakpointsInfo"><br>
 				current:<span id="currentSpace"></span><br>
@@ -374,10 +343,8 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	
 		function init() {
 			var register = $(".navbar ul li :eq(0)");
-			var memory = $(".navbar ul li :eq(1)");
 			var breakpoints = $(".navbar ul li :eq(2)");
 			register.addClass('active');
-			memory.removeClass('active');
 			breakpoints.removeClass('active')
 			$("#div_reg").css('display', 'block');
 			$("#div_mem").css('display', 'none');
@@ -528,30 +495,19 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 		}
 		function navbar_change() {//导航栏切换
 			var register = $(".navbar ul li :eq(0)");
-			var memory = $(".navbar ul li :eq(1)");
 			var breakpoints = $(".navbar ul li :eq(2)");
 			register.click(function (can) {
 				console.log("11")
 				register.addClass('active');
-				memory.removeClass('active');
 				breakpoints.removeClass('active')
 				$("#div_reg").css('display', 'block');
 				$("#div_mem").css('display', 'none');
 				$("#breakpointsInfo").css('display', 'none');
 	
 			});
-			memory.click(function () {
-				memory.addClass('active');
-				register.removeClass('active');
-				breakpoints.removeClass('active')
-				$("#div_mem").css('display', 'block');
-				$("#div_reg").css('display', 'none');
-				$("#breakpointsInfo").css('display', 'none');
-			})
 			breakpoints.click(function () {
 				breakpoints.addClass('active');
 				register.removeClass('active');
-				memory.removeClass('active')
 				$("#breakpointsInfo").css('display', 'block');
 				$("#div_mem").css('display', 'none');
 				$("#div_reg").css('display', 'none');
@@ -569,10 +525,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 				for (var i = 0; i < 33; i++) {
 					$("#reg").append("<tr><td>" + riscvRegNames[message.regValues[i][0][1]] + "</td><td>" + message.regValues[i][1][1] + "</td></tr>");
 				}
-			}
-			if (message.memValues) {
-				let memValues = message.memValues;
-				$("#mem").append("<tr><td>" + memValues.data + "</td><td>" + memValues.from + "</td><td>" + memValues.length + "</td></tr>");
 			}
 			if (message.kernelToUserBorder) {
 				document.getElementById('privilege').innerHTML = 'U';

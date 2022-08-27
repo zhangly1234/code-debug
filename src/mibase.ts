@@ -206,43 +206,6 @@ export class MI2DebugSession extends DebugSession {
 		this.miDebugger.on("thread-created", this.threadCreatedEvent.bind(this));
 		this.miDebugger.on("thread-exited", this.threadExitedEvent.bind(this));
 		this.miDebugger.once("debug-ready", (() => this.sendEvent(new InitializedEvent())));
-		/* czy
-		vscode.debug.registerDebugAdapterTrackerFactory('*', {
-			createDebugAdapterTracker() {
-			  return {
-				onWillReceiveMessage: () => that.sendEvent({ event: "customEvent", body: ["testsRoot"] } as DebugProtocol.Event),
-				onDidSendMessage:() => that.sendEvent({ event: "customEvent", body: ["testsRoot"] } as DebugProtocol.Event)
-			  };
-			}
-		  });
-		  */
-		try {
-			this.commandServer = net.createServer(c => {
-				c.on("data", data => {
-					const rawCmd = data.toString();
-					const spaceIndex = rawCmd.indexOf(" ");
-					let func = rawCmd;
-					let args = [];
-					if (spaceIndex != -1) {
-						func = rawCmd.substring(0, spaceIndex);
-						args = JSON.parse(rawCmd.substring(spaceIndex + 1));
-					}
-					Promise.resolve(this.miDebugger[func].apply(this.miDebugger, args)).then(data => {
-						c.write(data.toString());
-					});
-				});
-			});
-			this.commandServer.on("error", err => {
-				if (process.platform != "win32")
-					this.handleMsg("stderr", "Code-Debug WARNING: Utility Command Server: Error in command socket " + err.toString() + "\nCode-Debug WARNING: The examine memory location command won't work");
-			});
-			if (!fs.existsSync(systemPath.join(os.tmpdir(), "code-debug-sockets")))
-				fs.mkdirSync(systemPath.join(os.tmpdir(), "code-debug-sockets"));
-			this.commandServer.listen(this.serverPath = systemPath.join(os.tmpdir(), "code-debug-sockets", ("Debug-Instance-" + new Date(Date.now())/*Math.floor(Math.random() * 36 * 36 * 36 * 36).toString(36)*/).toLowerCase()));
-		} catch (e) {
-			if (process.platform != "win32")
-				this.handleMsg("stderr", "Code-Debug WARNING: Utility Command Server: Failed to start " + e.toString() + "\nCode-Debug WARNING: The examine memory location command won't work");
-		}
 
 	}
 
@@ -994,11 +957,6 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 
 		this.miDebugger.sendCommand("data-write-memory-bytes " + args.memoryReference + " " + hex_to_backend).then(
 			(result) => {
-				// resolve({
-				// 	contents: result.result("memory[0].contents"),
-				// 	begin: result.result("memory[0].begin"),
-				// });
-
 				this.sendResponse(response);
 			},
 			(err) => {
@@ -1023,14 +981,6 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				break;
 			case "eventTest":
 				this.sendEvent({ event: "eventTest", body: ["test"] } as DebugProtocol.Event);
-				this.sendResponse(response);
-				break;
-			case "memValuesRequest":
-				this.miDebugger.examineMemory(args.from, args.length).then(
-					(data) => {
-						this.sendEvent({ event: "memValues", body: { data: data, from: args.from, length: args.length } } as DebugProtocol.Event);
-					}
-				);
 				this.sendResponse(response);
 				break;
 			case "addDebugFile":

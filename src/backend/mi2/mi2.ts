@@ -722,34 +722,17 @@ export class MI2 extends EventEmitter implements IBackend {
 
 	examineMemory(addr: number | string, length: number): Thenable<any> {
 		if (trace) this.log("stderr", "examineMemory");
-
-
-		if (typeof addr === 'string') {
-			return new Promise((resolve, reject) => {
-				this.sendCommand("data-read-memory-bytes " + addr + " " + length).then(
-					(result) => {
-						resolve({
-							contents: result.result("memory[0].contents"),
-							begin: result.result("memory[0].begin"),
-						});
-					},
-					reject
-				);
-			});
-		} else {
-			// TODO 尽快废弃掉这个分支，让该函数调用只接受string类型的addr
-			return new Promise((resolve, reject) => {
-				this.sendCommand("data-read-memory-bytes 0x" + addr.toString(16) + " " + length).then(
-					(result) => {
-						resolve({
-							contents: result.result("memory[0].contents"),
-							begin: result.result("memory[0].begin"),
-						});
-					},
-					reject
-				);
-			});
-		}
+		return new Promise((resolve, reject) => {
+			this.sendCommand("data-read-memory-bytes " + addr + " " + length).then(
+				(result) => {
+					resolve({
+						contents: result.result("memory[0].contents"),
+						begin: result.result("memory[0].begin"),
+					});
+				},
+				reject
+			);
+		});
 	}
 
 	async evalExpression(name: string, thread: number, frame: number): Promise<MINode> {

@@ -197,10 +197,6 @@ Qemu虚拟机运行rCore-Tutorial操作系统，本项目中Qemu开启了gdbstub
             vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
             vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
 
-            //请求内存数据
-            webviewMemState.forEach(element => {
-                vscode.debug.activeDebugSession?.customRequest("memValuesRequest",element);
-            });
             //更新WebView中的断点信息
             vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
         }
@@ -470,7 +466,6 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 注：内核中的各种数据结构差异很大。此处列出可行的示例，欢迎感兴趣的大佬们继续添加
 #### 直接观测内存
 Ctrl+Shift+P memory
-TODO MemState 代码可以删掉
 #### 断点组的自动切换
 
 ### 暂不可跟踪
