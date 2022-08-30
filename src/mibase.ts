@@ -932,7 +932,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				this.sendResponse(response);
 			},
 			(err) => {
-				console.error(err);
+				this.sendEvent({event: "showErrorMessage", body: err.toString()} as DebugProtocol.Event);
 			}
 		);
 	}

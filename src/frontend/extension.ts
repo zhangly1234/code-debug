@@ -156,6 +156,8 @@ export function activate(context: vscode.ExtensionContext) {
 							console.log(message.body);
 						} else if (message.event === "showInformationMessage") {
 							vscode.window.showInformationMessage(message.body);
+						} else if (message.event === "showErrorMessage") {
+							vscode.window.showErrorMessage(message.body);
 						} else if (message.event === "listBreakpoints") {
 							vscode.window.showInformationMessage("断点信息表格已经更新");
 							currentPanel.webview.postMessage({ breakpointsInfo: message.body.data });
@@ -177,12 +179,7 @@ function examineMemory() {
 	}).then((ref_addr) => {
 		const x = getUriForDebugMemory(vscode.debug.activeDebugSession?.id, ref_addr, {fromOffset:0x00, toOffset:0x2000});
 		const y = vscode.Uri.parse(x);
-		vscode.commands.executeCommand("vscode.openWith", y, "hexEditor.hexedit").then(
-			undefined,
-			(e) => {
-				vscode.window.showErrorMessage(e.toString());
-			},
-		);
+		vscode.commands.executeCommand("vscode.openWith", y, "hexEditor.hexedit");
 	});
 
 }
