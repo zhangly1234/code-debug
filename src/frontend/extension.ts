@@ -14,8 +14,7 @@ import { Z_NO_COMPRESSION } from "zlib";
 import { riscvRegNames } from "./webview";
 
 export function activate(context: vscode.ExtensionContext) {
-
-	vscode.debug.onDidStartDebugSession((e:vscode.DebugSession) => {
+	vscode.debug.onDidStartDebugSession((e: vscode.DebugSession) => {
 		vscode.commands.executeCommand("core-debugger.startPanel"); //当启动调试会话时
 	});
 
@@ -172,18 +171,20 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function examineMemory() {
-
-	vscode.window.showInputBox({
-		placeHolder: "Memory Location Reference",
-		validateInput: () => ""
-	}).then((ref_addr) => {
-		const x = getUriForDebugMemory(vscode.debug.activeDebugSession?.id, ref_addr, {fromOffset:0x00, toOffset:0x2000});
-		const y = vscode.Uri.parse(x);
-		vscode.commands.executeCommand("vscode.openWith", y, "hexEditor.hexedit");
-	});
-
+	vscode.window
+		.showInputBox({
+			placeHolder: "Memory Location Reference",
+			validateInput: () => "",
+		})
+		.then((ref_addr) => {
+			const x = getUriForDebugMemory(vscode.debug.activeDebugSession?.id, ref_addr, {
+				fromOffset: 0x00,
+				toOffset: 0x2000,
+			});
+			const y = vscode.Uri.parse(x);
+			vscode.commands.executeCommand("vscode.openWith", y, "hexEditor.hexedit");
+		});
 }
-
 
 //WebView HTML
 function getWebviewContent(regNames?: string, regValues?: string) {
@@ -588,12 +589,18 @@ function getDebugPanelInfo() {
 	//return JSON.stringify(result.registers);
 }
 
-
 export const getUriForDebugMemory = (
 	sessionId: string,
 	memoryReference: string,
 	range: { fromOffset: number; toOffset: number },
-	displayName = 'memory'
+	displayName = "memory"
 ) => {
-	return "vscode-debug-memory://" + sessionId + '/' + encodeURIComponent(memoryReference) + `/${encodeURIComponent(displayName)}.bin` + (range ? `?range=${range.fromOffset}:${range.toOffset}` : "");
+	return (
+		"vscode-debug-memory://" +
+		sessionId +
+		"/" +
+		encodeURIComponent(memoryReference) +
+		`/${encodeURIComponent(displayName)}.bin` +
+		(range ? `?range=${range.fromOffset}:${range.toOffset}` : "")
+	);
 };
