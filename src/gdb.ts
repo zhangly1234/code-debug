@@ -13,10 +13,9 @@ import {
 } from "vscode-debugadapter";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { MI2, escape } from "./backend/mi2/mi2";
-import {ValuesFormattingMode } from "./backend/backend";
+import { ValuesFormattingMode } from "./backend/backend";
 
-export interface LaunchRequestArguments
-	extends DebugProtocol.LaunchRequestArguments {
+export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	cwd: string;
 	target: string;
 	gdbpath: string;
@@ -33,11 +32,10 @@ export interface LaunchRequestArguments
 	valuesFormatting: ValuesFormattingMode;
 	printCalls: boolean;
 	showDevDebugOutput: boolean;
-	qemuPath: string,
-	qemuArgs: string[],
-	userSpaceDebuggeeFiles: string[],
+	qemuPath: string;
+	qemuArgs: string[];
+	userSpaceDebuggeeFiles: string[];
 }
-
 
 let NEXT_TERM_ID = 1;
 export class GDBDebugSession extends MI2DebugSession {
@@ -62,19 +60,26 @@ export class GDBDebugSession extends MI2DebugSession {
 		response: DebugProtocol.LaunchResponse,
 		args: LaunchRequestArguments
 	): void {
-
 		const converted_args = this.getQemuLaunchCmd(args);
 		if (converted_args.length == 0) {
-			this.sendErrorResponse(response, 103, "`qemuPath` and `qemuArgs` property must be set in `launch.json`");
+			this.sendErrorResponse(
+				response,
+				103,
+				"`qemuPath` and `qemuArgs` property must be set in `launch.json`"
+			);
 			return;
 		}
 
-		this.runInTerminalRequest({
-			kind: 'integrated',
-			title: `CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`,
-			cwd: '',
-			args: converted_args,
-		}, 10, undefined);
+		this.runInTerminalRequest(
+			{
+				kind: "integrated",
+				title: `CoreDebugger Ext Terminal #${NEXT_TERM_ID++}`,
+				cwd: "",
+				args: converted_args,
+			},
+			10,
+			undefined
+		);
 
 		this.miDebugger = new MI2(
 			args.gdbpath || "gdb",
@@ -86,9 +91,7 @@ export class GDBDebugSession extends MI2DebugSession {
 		this.initDebugger();
 		this.quit = false;
 		this.attached = !args.remote;
-		this.initialRunCommand = args.stopAtConnect
-			? RunCommand.NONE
-			: RunCommand.CONTINUE;
+		this.initialRunCommand = args.stopAtConnect ? RunCommand.NONE : RunCommand.CONTINUE;
 
 		this.setValuesFormattingMode(args.valuesFormatting);
 		this.miDebugger.printCalls = !!args.printCalls;
@@ -105,11 +108,7 @@ export class GDBDebugSession extends MI2DebugSession {
 					this.sendResponse(response);
 				},
 				(err) => {
-					this.sendErrorResponse(
-						response,
-						102,
-						`Failed to attach: ${err.toString()}`
-					);
+					this.sendErrorResponse(response, 102, `Failed to attach: ${err.toString()}`);
 				}
 			);
 		} else {
@@ -122,46 +121,31 @@ export class GDBDebugSession extends MI2DebugSession {
 					this.sendResponse(response);
 				},
 				(err) => {
-					this.sendErrorResponse(
-						response,
-						101,
-						`Failed to attach: ${err.toString()}`
-					);
+					this.sendErrorResponse(response, 101, `Failed to attach: ${err.toString()}`);
 				}
 			);
 		}
-
 	}
 
 	// Add extra commands for source file path substitution in GDB-specific syntax
-	protected setPathSubstitutions(substitutions: {
-		[index: string]: string;
-	}): void {
+	protected setPathSubstitutions(substitutions: { [index: string]: string }): void {
 		if (substitutions) {
 			Object.keys(substitutions).forEach((source) => {
 				this.miDebugger.extraCommands.push(
-					'gdb-set substitute-path "' +
-						escape(source) +
-						'" "' +
-						escape(substitutions[source]) +
-						'"'
+					'gdb-set substitute-path "' + escape(source) + '" "' + escape(substitutions[source]) + '"'
 				);
 			});
 		}
 	}
 
-
 	private getQemuLaunchCmd(args: LaunchRequestArguments): string[] {
 		if (!args.qemuArgs?.length || !args.qemuPath?.length) {
 			return [];
 		}
-		let r = [
-			args.qemuPath
-		];
+		let r = [args.qemuPath];
 		r = r.concat(args.qemuArgs);
 		return r;
 	}
-
 }
 
 DebugSession.run(GDBDebugSession);

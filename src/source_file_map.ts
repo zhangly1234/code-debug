@@ -53,11 +53,7 @@ export class SourceFileMap {
 		return pathPosix.isAbsolute(unknownPath) ? pathPosix : pathWin32;
 	}
 
-	private pathMatch(
-		key: keyof Mapping,
-		caseSensitive: boolean,
-		path: string
-	): Mapping | undefined {
+	private pathMatch(key: keyof Mapping, caseSensitive: boolean, path: string): Mapping | undefined {
 		for (const mapping of this.sortedMappings[key]) {
 			let matched: boolean;
 

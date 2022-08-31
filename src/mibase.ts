@@ -32,9 +32,6 @@ import * as os from "os";
 import * as fs from "fs";
 import * as vscode from "vscode";
 
-
-
-
 import { SourceFileMap } from "./source_file_map";
 import { Address } from "cluster";
 import { strict } from "assert";
@@ -1171,7 +1168,11 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 		}
 	}
 
-	protected readMemoryRequest(response: DebugProtocol.ReadMemoryResponse, args: DebugProtocol.ReadMemoryArguments, request?: DebugProtocol.Request): void {
+	protected readMemoryRequest(
+		response: DebugProtocol.ReadMemoryResponse,
+		args: DebugProtocol.ReadMemoryArguments,
+		request?: DebugProtocol.Request
+	): void {
 		if (args.count == 0) {
 			// 不太清楚为啥会有0长度的读取命令，但这样的请求会使GDB返回错误。
 			response.body = {
@@ -1188,9 +1189,9 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 
 				const bytes = Buffer.alloc(data.contents.length / 2);
 				for (let i = 0, c = 0; c < data.contents.length; c += 2, i += 1)
-					bytes[i] = (parseInt(data.contents.substr(c, 2), 16));
+					bytes[i] = parseInt(data.contents.substr(c, 2), 16);
 
-				const base64_data = bytes.toString('base64');
+				const base64_data = bytes.toString("base64");
 
 				response.body = {
 					address: data.begin,
@@ -1199,39 +1200,42 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				this.sendResponse(response);
 			},
 			(err) => {
-				this.sendEvent({event: "showErrorMessage", body: err.toString()} as DebugProtocol.Event);
+				this.sendEvent({ event: "showErrorMessage", body: err.toString() } as DebugProtocol.Event);
 			}
 		);
 	}
 
-	protected writeMemoryRequest(response: DebugProtocol.WriteMemoryResponse, args: DebugProtocol.WriteMemoryArguments, request?: DebugProtocol.Request): void {
+	protected writeMemoryRequest(
+		response: DebugProtocol.WriteMemoryResponse,
+		args: DebugProtocol.WriteMemoryArguments,
+		request?: DebugProtocol.Request
+	): void {
 		if (args.data.length == 0) {
 			this.sendErrorResponse(response, 0);
 			return;
 		}
 
-		const buff = Buffer.from(args.data, 'base64');
+		const buff = Buffer.from(args.data, "base64");
 
 		const hex = [];
-		for ( let i = 0; i < buff.length; i++) {
+		for (let i = 0; i < buff.length; i++) {
 			const current = buff[i] < 0 ? buff[i] + 256 : buff[i];
 			hex.push((current >>> 4).toString(16));
-			hex.push((current & 0xF).toString(16));
+			hex.push((current & 0xf).toString(16));
 		}
 		const hex_to_backend = hex.join("");
 
-
-
-		this.miDebugger.sendCommand("data-write-memory-bytes " + args.memoryReference + " " + hex_to_backend).then(
-			(result) => {
-				this.sendResponse(response);
-			},
-			(err) => {
-				this.sendErrorResponse(response, 0);
-			}
-		);
+		this.miDebugger
+			.sendCommand("data-write-memory-bytes " + args.memoryReference + " " + hex_to_backend)
+			.then(
+				(result) => {
+					this.sendResponse(response);
+				},
+				(err) => {
+					this.sendErrorResponse(response, 0);
+				}
+			);
 	}
-
 
 	///返回消息可以用Event或者Response。用Response更规范，用Event代码更简单。
 	protected customRequest(command: string, response: DebugProtocol.Response, args: any): void {
