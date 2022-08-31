@@ -20,48 +20,11 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(
-		vscode.workspace.registerTextDocumentContentProvider("debugmemory", new MemoryContentProvider())
-	);
-	context.subscriptions.push(
 		vscode.commands.registerCommand("code-debug.examineMemoryLocation", examineMemory)
-	);
-	context.subscriptions.push(
-		vscode.commands.registerCommand("code-debug.getFileNameNoExt", () => {
-			if (
-				!vscode.window.activeTextEditor ||
-				!vscode.window.activeTextEditor.document ||
-				!vscode.window.activeTextEditor.document.fileName
-			) {
-				vscode.window.showErrorMessage("No editor with valid file name active");
-				return;
-			}
-			const fileName = vscode.window.activeTextEditor.document.fileName;
-			const ext = path.extname(fileName);
-			return fileName.substring(0, fileName.length - ext.length);
-		})
-	);
-	context.subscriptions.push(
-		vscode.commands.registerCommand("code-debug.getFileBasenameNoExt", () => {
-			if (
-				!vscode.window.activeTextEditor ||
-				!vscode.window.activeTextEditor.document ||
-				!vscode.window.activeTextEditor.document.fileName
-			) {
-				vscode.window.showErrorMessage("No editor with valid file name active");
-				return;
-			}
-			const fileName = path.basename(vscode.window.activeTextEditor.document.fileName);
-			const ext = path.extname(fileName);
-			return fileName.substring(0, fileName.length - ext.length);
-		})
 	);
 
 	//=========================================================================================
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
-	let webviewMemState = [
-		{ from: 0x80200000, length: 16 },
-		{ from: 0x80201000, length: 32 },
-	];
 	const kernelInOutBreakpointArgs = 1;
 	const userDebugFile = "initproc"; //可以修改为其它用户程序名，如matrix
 	//========================================================================================
@@ -84,9 +47,6 @@ export function activate(context: vscode.ExtensionContext) {
 			currentPanel.webview.onDidReceiveMessage(
 				(message) => {
 					// vscode.window.showErrorMessage("message");
-					if (message.memRangeQuery) {
-						webviewMemState = message.memRangeQuery;
-					}
 					if (message.removeDebugFile) {
 						//自定义请求.customRequest函数见/src/mibase.ts
 						vscode.debug.activeDebugSession?.customRequest("removeDebugFile", {
@@ -152,10 +112,6 @@ export function activate(context: vscode.ExtensionContext) {
 							//请求寄存器信息
 							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
 							vscode.debug.activeDebugSession?.customRequest("registersValuesRequest");
-							//请求内存数据
-							webviewMemState.forEach((element) => {
-								vscode.debug.activeDebugSession?.customRequest("memValuesRequest", element);
-							});
 							//更新WebView中的断点信息
 							vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
 						} //处理自定义事件
@@ -166,12 +122,9 @@ export function activate(context: vscode.ExtensionContext) {
 							currentPanel.webview.postMessage({ regValues: message.body });
 						} else if (message.event === "updateRegistersNamesEvent") {
 							currentPanel.webview.postMessage({ regNames: message.body });
-						} else if (message.event === "memValues") {
-							currentPanel.webview.postMessage({ memValues: message.body });
 						}
 						//到达内核态->用户态的边界
 						else if (message.event === "kernelToUserBorder") {
-							webviewMemState = []; //TODO applyMemStateSet
 							// removeAllCliBreakpoints();
 							vscode.window.showInformationMessage("switched to " + userDebugFile + " breakpoints");
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
@@ -203,6 +156,8 @@ export function activate(context: vscode.ExtensionContext) {
 							console.log(message.body);
 						} else if (message.event === "showInformationMessage") {
 							vscode.window.showInformationMessage(message.body);
+						} else if (message.event === "showErrorMessage") {
+							vscode.window.showErrorMessage(message.body);
 						} else if (message.event === "listBreakpoints") {
 							vscode.window.showInformationMessage("断点信息表格已经更新");
 							currentPanel.webview.postMessage({ breakpointsInfo: message.body.data });
@@ -216,154 +171,20 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 }
 
-const memoryLocationRegex = /^0x[0-9a-f]+$/;
-
-function getMemoryRange(range: string) {
-	if (!range) return undefined;
-	range = range.replace(/\s+/g, "").toLowerCase();
-	let index;
-	if ((index = range.indexOf("+")) != -1) {
-		const from = range.substring(0, index);
-		let length = range.substring(index + 1);
-		if (!memoryLocationRegex.exec(from)) return undefined;
-		if (memoryLocationRegex.exec(length)) length = parseInt(length.substring(2), 16).toString();
-		return "from=" + encodeURIComponent(from) + "&length=" + encodeURIComponent(length);
-	} else if ((index = range.indexOf("-")) != -1) {
-		const from = range.substring(0, index);
-		const to = range.substring(index + 1);
-		if (!memoryLocationRegex.exec(from)) return undefined;
-		if (!memoryLocationRegex.exec(to)) return undefined;
-		return "from=" + encodeURIComponent(from) + "&to=" + encodeURIComponent(to);
-	} else if (memoryLocationRegex.exec(range)) return "at=" + encodeURIComponent(range);
-	else return undefined;
-}
-
 function examineMemory() {
-	const socketlists = path.join(os.tmpdir(), "code-debug-sockets");
-	if (!fs.existsSync(socketlists)) {
-		if (process.platform == "win32")
-			return vscode.window.showErrorMessage("This command is not available on windows");
-		else return vscode.window.showErrorMessage("No debugging sessions available");
-	}
-	fs.readdir(socketlists, (err, files) => {
-		if (err) {
-			if (process.platform == "win32")
-				return vscode.window.showErrorMessage("This command is not available on windows");
-			else return vscode.window.showErrorMessage("No debugging sessions available");
-		}
-		const pickedFile = (file) => {
-			vscode.window
-				.showInputBox({
-					placeHolder: "Memory Location or Range",
-					validateInput: (range) =>
-						getMemoryRange(range) === undefined
-							? "Range must either be in format 0xF00-0xF01, 0xF100+32 or 0xABC154"
-							: "",
-				})
-				.then((range) => {
-					vscode.window.showTextDocument(
-						vscode.Uri.parse("debugmemory://" + file + "?" + getMemoryRange(range))
-					);
-				});
-		};
-		if (files.length == 1) pickedFile(files[0]);
-		else if (files.length > 0)
-			vscode.window
-				.showQuickPick(files, { placeHolder: "Running debugging instance" })
-				.then((file) => pickedFile(file));
-		else if (process.platform == "win32")
-			return vscode.window.showErrorMessage("This command is not available on windows");
-		else vscode.window.showErrorMessage("No debugging sessions available");
+
+	vscode.window.showInputBox({
+		placeHolder: "Memory Location Reference",
+		validateInput: () => ""
+	}).then((ref_addr) => {
+		const x = getUriForDebugMemory(vscode.debug.activeDebugSession?.id, ref_addr, {fromOffset:0x00, toOffset:0x2000});
+		const y = vscode.Uri.parse(x);
+		vscode.commands.executeCommand("vscode.openWith", y, "hexEditor.hexedit");
 	});
+
 }
 
-class MemoryContentProvider implements vscode.TextDocumentContentProvider {
-	provideTextDocumentContent(uri: vscode.Uri, token: vscode.CancellationToken): Thenable<string> {
-		return new Promise((resolve, reject) => {
-			const conn = net.connect(
-				path.join(os.tmpdir(), "code-debug-sockets", uri.authority.toLowerCase())
-			);
-			let from, to;
-			let highlightAt = -1;
-			const splits = uri.query.split("&");
-			if (splits[0].split("=")[0] == "at") {
-				const loc = parseInt(splits[0].split("=")[1].substring(2), 16);
-				highlightAt = 64;
-				from = Math.max(loc - 64, 0);
-				to = Math.max(loc + 768, 0);
-			} else if (splits[0].split("=")[0] == "from") {
-				from = parseInt(splits[0].split("=")[1].substring(2), 16);
-				if (splits[1].split("=")[0] == "to") {
-					to = parseInt(splits[1].split("=")[1].substring(2), 16);
-				} else if (splits[1].split("=")[0] == "length") {
-					to = from + parseInt(splits[1].split("=")[1]);
-				} else return reject("Invalid Range");
-			} else return reject("Invalid Range");
-			if (to < from) return reject("Negative Range");
-			conn.write("examineMemory " + JSON.stringify([from, to - from + 1]));
-			conn.once("data", (data) => {
-				let formattedCode = "                  00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F\n";
-				let index: number = from;
-				const hexString = data.toString();
-				let x = 0;
-				let asciiLine = "";
-				let byteNo = 0;
-				for (let i = 0; i < hexString.length; i += 2) {
-					if (x == 0) {
-						let addr = index.toString(16);
-						while (addr.length < 16) addr = "0" + addr;
-						formattedCode += addr + "  ";
-					}
-					index++;
 
-					const digit = hexString.substring(i, i + 2);
-					const digitNum = parseInt(digit, 16);
-					if (digitNum >= 32 && digitNum <= 126) asciiLine += String.fromCharCode(digitNum);
-					else asciiLine += ".";
-
-					if (highlightAt == byteNo) {
-						formattedCode = formattedCode.slice(0, -1) + "[" + digit + "]";
-					} else {
-						formattedCode += digit + " ";
-					}
-
-					if (x == 7) formattedCode += " ";
-
-					if (++x >= 16) {
-						formattedCode += " " + asciiLine + "\n";
-						x = 0;
-						asciiLine = "";
-					}
-					byteNo++;
-				}
-				if (x > 0) {
-					for (let i = 0; i <= 16 - x; i++) {
-						formattedCode += "   ";
-					}
-					if (x >= 8) formattedCode = formattedCode.slice(0, -2);
-					else formattedCode = formattedCode.slice(0, -1);
-					formattedCode += asciiLine;
-				}
-				resolve(
-					center("Memory Range from 0x" + from.toString(16) + " to 0x" + to.toString(16), 84) +
-						"\n\n" +
-						formattedCode
-				);
-				conn.destroy();
-			});
-		});
-	}
-}
-
-function center(str: string, width: number): string {
-	let left = true;
-	while (str.length < width) {
-		if (left) str = " " + str;
-		else str = str + " ";
-		left = !left;
-	}
-	return str;
-}
 //WebView HTML
 function getWebviewContent(regNames?: string, regValues?: string) {
 	return `<!DOCTYPE html>
@@ -471,7 +292,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			<nav class="navbar  navbar-fixed-top">
 				<ul class="nav nav-tabs">
 					<li role="presentation" class="active" id="nav_reg"><a href="#">Regester</a></li>
-					<li role="presentation"><a href="#" id="nav_mem">Memory</a></li>
 					<li role="presentation"><a href="#" id="nav_bre">Breakpoint</a></li>
 				</ul>
 			</nav>
@@ -506,22 +326,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 				</table>
 			</div>
 	
-			<!--  存储器 -->
-			<div class="table-responsive" id="div_mem">
-				<table class="table table-striped table-sm">
-					<thead>
-						<tr>
-							<th>data</th>
-							<th>from</th>
-							<th>length</th>
-						</tr>
-					</thead>
-	
-					<tbody id="mem">
-					</tbody>
-				</table>
-			</div>
-	
 			<!--  断点 -->
 			<div id="breakpointsInfo"><br>
 				current:<span id="currentSpace"></span><br>
@@ -536,10 +340,8 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	
 		function init() {
 			var register = $(".navbar ul li :eq(0)");
-			var memory = $(".navbar ul li :eq(1)");
 			var breakpoints = $(".navbar ul li :eq(2)");
 			register.addClass('active');
-			memory.removeClass('active');
 			breakpoints.removeClass('active')
 			$("#div_reg").css('display', 'block');
 			$("#div_mem").css('display', 'none');
@@ -690,30 +492,19 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 		}
 		function navbar_change() {//导航栏切换
 			var register = $(".navbar ul li :eq(0)");
-			var memory = $(".navbar ul li :eq(1)");
 			var breakpoints = $(".navbar ul li :eq(2)");
 			register.click(function (can) {
 				console.log("11")
 				register.addClass('active');
-				memory.removeClass('active');
 				breakpoints.removeClass('active')
 				$("#div_reg").css('display', 'block');
 				$("#div_mem").css('display', 'none');
 				$("#breakpointsInfo").css('display', 'none');
 	
 			});
-			memory.click(function () {
-				memory.addClass('active');
-				register.removeClass('active');
-				breakpoints.removeClass('active')
-				$("#div_mem").css('display', 'block');
-				$("#div_reg").css('display', 'none');
-				$("#breakpointsInfo").css('display', 'none');
-			})
 			breakpoints.click(function () {
 				breakpoints.addClass('active');
 				register.removeClass('active');
-				memory.removeClass('active')
 				$("#breakpointsInfo").css('display', 'block');
 				$("#div_mem").css('display', 'none');
 				$("#div_reg").css('display', 'none');
@@ -731,10 +522,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 				for (var i = 0; i < 33; i++) {
 					$("#reg").append("<tr><td>" + riscvRegNames[message.regValues[i][0][1]] + "</td><td>" + message.regValues[i][1][1] + "</td></tr>");
 				}
-			}
-			if (message.memValues) {
-				let memValues = message.memValues;
-				$("#mem").append("<tr><td>" + memValues.data + "</td><td>" + memValues.from + "</td><td>" + memValues.length + "</td></tr>");
 			}
 			if (message.kernelToUserBorder) {
 				document.getElementById('privilege').innerHTML = 'U';
@@ -801,3 +588,12 @@ function getDebugPanelInfo() {
 	//return JSON.stringify(result.registers);
 }
 
+
+export const getUriForDebugMemory = (
+	sessionId: string,
+	memoryReference: string,
+	range: { fromOffset: number; toOffset: number },
+	displayName = 'memory'
+) => {
+	return "vscode-debug-memory://" + sessionId + '/' + encodeURIComponent(memoryReference) + `/${encodeURIComponent(displayName)}.bin` + (range ? `?range=${range.fromOffset}:${range.toOffset}` : "");
+};

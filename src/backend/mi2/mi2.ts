@@ -720,12 +720,15 @@ export class MI2 extends EventEmitter implements IBackend {
 		return ret;
 	}
 
-	examineMemory(from: number, length: number): Thenable<any> {
+	examineMemory(addr: number | string, length: number): Thenable<any> {
 		if (trace) this.log("stderr", "examineMemory");
 		return new Promise((resolve, reject) => {
-			this.sendCommand("data-read-memory-bytes 0x" + from.toString(16) + " " + length).then(
+			this.sendCommand("data-read-memory-bytes " + addr + " " + length).then(
 				(result) => {
-					resolve(result.result("memory[0].contents"));
+					resolve({
+						contents: result.result("memory[0].contents"),
+						begin: result.result("memory[0].begin"),
+					});
 				},
 				reject
 			);

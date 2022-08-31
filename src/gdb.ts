@@ -53,6 +53,8 @@ export class GDBDebugSession extends MI2DebugSession {
 		response.body.supportsEvaluateForHovers = true;
 		response.body.supportsSetVariable = true;
 		response.body.supportsStepBack = true;
+		response.body.supportsReadMemoryRequest = true;
+		response.body.supportsWriteMemoryRequest = true;
 		this.sendResponse(response);
 	}
 
