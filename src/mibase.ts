@@ -39,6 +39,7 @@ import { SourceFileMap } from "./source_file_map";
 import { Address } from "cluster";
 import { strict } from "assert";
 import { debugPort } from "process";
+import { RISCV_REG_NAMES } from "./frontend/consts";
 
 class ExtendedVariable {
 	constructor(public name, public options) {}
@@ -701,6 +702,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 		};
 
 		scopes.push(createScope("Local", false));
+		scopes.push(createScope("Register", true));
 
 		response.body = {
 			scopes: scopes,
@@ -713,10 +715,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 		args: DebugProtocol.VariablesArguments
 	): Promise<void> {
 		const variables: DebugProtocol.Variable[] = [];
-		const id: VariableScope | string | VariableObject | ExtendedVariable = this.variableHandles.get(
-			args.variablesReference
-		);
-
+		const variableHandle = this.variableHandles.get(args.variablesReference);
 		const createVariable = (arg, options?) => {
 			if (options) return this.variableHandles.create(new ExtendedVariable(arg, options));
 			else return this.variableHandles.create(arg);
@@ -733,10 +732,36 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			return varObj.isCompound() ? id : 0;
 		};
 
-		if (id instanceof VariableScope) {
+		if (variableHandle instanceof VariableScope) {
+			// need Register values
+			if (variableHandle.name === "Register") {
+				const regValues = await this.miDebugger.getRegistersValues();
+				const regs = regValues.map((item) => {
+					// item[0] is ['name', 'xxx']
+					const nameIdx = parseInt(item[0][1]);
+					if (isNaN(nameIdx)) {
+						this.sendErrorResponse(response, 1, `Could not expand variable: ${item[0][1]}`);
+						return;
+					}
+					return {
+						name: RISCV_REG_NAMES[nameIdx],
+						value: item[1][1], // item[1] is ['value', 'xxx']
+						variablesReference: 0, // not a object, cannot be expended
+					};
+				});
+				response.body = {
+					variables: regs,
+				};
+				this.sendResponse(response);
+				return;
+			}
+
 			let stack: Variable[];
 			try {
-				stack = await this.miDebugger.getStackVariables(id.threadId, id.level);
+				stack = await this.miDebugger.getStackVariables(
+					variableHandle.threadId,
+					variableHandle.level
+				);
 				for (const variable of stack) {
 					if (this.useVarObjects) {
 						try {
@@ -790,13 +815,14 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 									];
 								variables.push(expanded[0]);
 							}
-						} else
+						} else {
 							variables.push({
 								name: variable.name,
 								type: variable.type,
 								value: "<unknown>",
 								variablesReference: createVariable(variable.name),
 							});
+						}
 					}
 				}
 				response.body = {
@@ -806,14 +832,19 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			} catch (err) {
 				this.sendErrorResponse(response, 1, `Could not expand variable: ${err}`);
 			}
-		} else if (typeof id == "string") {
+		} else if (typeof variableHandle == "string") {
 			// Variable members
 			let variable;
 			try {
 				// TODO: this evaluates on an (effectively) unknown thread for multithreaded programs.
-				variable = await this.miDebugger.evalExpression(JSON.stringify(id), 0, 0);
+				variable = await this.miDebugger.evalExpression(JSON.stringify(variableHandle), 0, 0);
 				try {
-					let expanded = expandValue(createVariable, variable.result("value"), id, variable);
+					let expanded = expandValue(
+						createVariable,
+						variable.result("value"),
+						variableHandle,
+						variable
+					);
 					if (!expanded) {
 						this.sendErrorResponse(response, 2, `Could not expand variable`);
 					} else {
@@ -836,12 +867,12 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			} catch (err) {
 				this.sendErrorResponse(response, 1, `Could not expand variable: ${err}`);
 			}
-		} else if (typeof id == "object") {
-			if (id instanceof VariableObject) {
+		} else if (typeof variableHandle == "object") {
+			if (variableHandle instanceof VariableObject) {
 				// Variable members
 				let children: VariableObject[];
 				try {
-					children = await this.miDebugger.varListChildren(id.name);
+					children = await this.miDebugger.varListChildren(variableHandle.name);
 					const vars = children.map((child) => {
 						const varId = findOrCreateVariable(child);
 						child.id = varId;
@@ -855,8 +886,8 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				} catch (err) {
 					this.sendErrorResponse(response, 1, `Could not expand variable: ${err}`);
 				}
-			} else if (id instanceof ExtendedVariable) {
-				const varReq = id;
+			} else if (variableHandle instanceof ExtendedVariable) {
+				const varReq = variableHandle;
 				if (varReq.options.arg) {
 					const strArr = [];
 					let argsPart = true;
@@ -924,7 +955,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					);
 			} else {
 				response.body = {
-					variables: id,
+					variables: variableHandle,
 				};
 				this.sendResponse(response);
 			}

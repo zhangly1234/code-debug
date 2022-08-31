@@ -14,8 +14,7 @@ import { Z_NO_COMPRESSION } from "zlib";
 import { riscvRegNames } from "./webview";
 
 export function activate(context: vscode.ExtensionContext) {
-
-	vscode.debug.onDidStartDebugSession((e:vscode.DebugSession) => {
+	vscode.debug.onDidStartDebugSession((e: vscode.DebugSession) => {
 		vscode.commands.executeCommand("core-debugger.startPanel"); //当启动调试会话时
 	});
 
@@ -172,7 +171,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function examineMemory() {
-
 	vscode.window.showInputBox({
 		placeHolder: "Memory Location Reference",
 		validateInput: () => ""
@@ -181,9 +179,7 @@ function examineMemory() {
 		const y = vscode.Uri.parse(x);
 		vscode.commands.executeCommand("vscode.openWith", y, "hexEditor.hexedit");
 	});
-
 }
-
 
 //WebView HTML
 function getWebviewContent(regNames?: string, regValues?: string) {
