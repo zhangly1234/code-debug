@@ -28,6 +28,54 @@ export function activate(context: vscode.ExtensionContext) {
 	const userDebugFile = "initproc"; //可以修改为其它用户程序名，如matrix
 	//========================================================================================
 
+	const removeDebugFileCmd = vscode.commands.registerCommand("code-debug.removeDebugFile", () => {
+		// 自定义请求.customRequest函数见/src/mibase.ts
+		vscode.debug.activeDebugSession?.customRequest("removeDebugFile", {
+			debugFilepath:
+				os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/initproc",
+		});
+		// 弹出窗口
+		vscode.window.showInformationMessage("symbol file `initproc` removed");
+	});
+
+	const setKernelInOutBreakpointsCmd = vscode.commands.registerCommand(
+		"code-debug.setKernelInOutBreakpoints",
+		() => {
+			vscode.debug.activeDebugSession?.customRequest("setKernelInOutBreakpoints");
+			vscode.window.showInformationMessage("Kernel In Out Breakpoints Set");
+		}
+	);
+
+	const removeAllCliBreakpointsCmd = vscode.commands.registerCommand(
+		"code-debug.removeAllCliBreakpoints",
+		() => {
+			removeAllCliBreakpoints();
+			vscode.window.showInformationMessage("All breakpoints including hidden ones are removed.");
+		}
+	);
+
+	const disableCurrentSpaceBreakpointsCmd = vscode.commands.registerCommand(
+		"code-debug.disableCurrentSpaceBreakpoints",
+		() => {
+			vscode.window.showInformationMessage("disableCurrentSpaceBreakpoints received");
+			vscode.debug.activeDebugSession?.customRequest("disableCurrentSpaceBreakpoints");
+		}
+	);
+
+	const updateAllSpacesBreakpointsInfoCmd = vscode.commands.registerCommand(
+		"updateAllSpacesBreakpointsInfo",
+		() => {
+			vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+		}
+	);
+	context.subscriptions.push(
+		removeDebugFileCmd,
+		setKernelInOutBreakpointsCmd,
+		removeAllCliBreakpointsCmd,
+		disableCurrentSpaceBreakpointsCmd,
+		updateAllSpacesBreakpointsInfoCmd
+	);
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand("core-debugger.startPanel", () => {
 			// Create and show a new webview
@@ -42,41 +90,6 @@ export function activate(context: vscode.ExtensionContext) {
 			);
 			// And set its HTML content
 			currentPanel.webview.html = getWebviewContent("loading reg names", "loading reg values");
-			//处理从WebView中传递出的消息
-			currentPanel.webview.onDidReceiveMessage(
-				(message) => {
-					// vscode.window.showErrorMessage("message");
-					if (message.removeDebugFile) {
-						//自定义请求.customRequest函数见/src/mibase.ts
-						vscode.debug.activeDebugSession?.customRequest("removeDebugFile", {
-							debugFilepath:
-								os.homedir() +
-								"/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/initproc",
-						});
-						//弹出窗口
-						vscode.window.showInformationMessage("symbol file `initproc` removed");
-					}
-					if (message.setKernelInOutBreakpoints) {
-						vscode.debug.activeDebugSession?.customRequest("setKernelInOutBreakpoints");
-						vscode.window.showInformationMessage("Kernel In Out Breakpoints Set");
-					}
-					if (message.removeAllCliBreakpoints) {
-						removeAllCliBreakpoints();
-						vscode.window.showInformationMessage(
-							"All breakpoints including hidden ones are removed."
-						);
-					}
-					if (message.disableCurrentSpaceBreakpoints) {
-						vscode.window.showInformationMessage("disableCurrentSpaceBreakpoints received");
-						vscode.debug.activeDebugSession?.customRequest("disableCurrentSpaceBreakpoints");
-					}
-					if (message.updateAllSpacesBreakpointsInfo) {
-						vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
-					}
-				},
-				undefined,
-				context.subscriptions
-			);
 			///备用
 			// vscode.debug.onDidChangeBreakpoints((e)=>{
 			// 	vscode.window.showInformationMessage("onDidChangeBreakpoints");
@@ -292,8 +305,7 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			<!-- navbar -->
 			<nav class="navbar  navbar-fixed-top">
 				<ul class="nav nav-tabs">
-					<li role="presentation" class="active" id="nav_reg"><a href="#">Regester</a></li>
-					<li role="presentation"><a href="#" id="nav_bre">Breakpoint</a></li>
+					<li role="presentation" class="active"><a href="#" id="nav_bre">Breakpoint</a></li>
 				</ul>
 			</nav>
 			<i class="bi bi-1-circle"></i>
@@ -312,20 +324,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 					onclick="updateAllSpacesBreakpointsInfo()">updateAllSpacesBreakpointsInfo</button><br>
 			</div>
 			-->
-			<!--寄存器-->
-			<div class="table-responsive" id="div_reg">
-				<table class="table table-striped table-sm">
-					<thead>
-						<tr>
-							<th>name</th>
-							<th>value</th>
-						</tr>
-					</thead>
-	
-					<tbody id="reg">
-					</tbody>
-				</table>
-			</div>
 	
 			<!--  断点 -->
 			<div id="breakpointsInfo"><br>
@@ -340,11 +338,8 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 	<script>
 	
 		function init() {
-			var register = $(".navbar ul li :eq(0)");
 			var breakpoints = $(".navbar ul li :eq(2)");
-			register.addClass('active');
-			breakpoints.removeClass('active')
-			$("#div_reg").css('display', 'block');
+			breakpoints.addClass('active')
 			$("#div_mem").css('display', 'none');
 			$("#breakpointsInfo").css('display', 'none');
 	
@@ -492,20 +487,9 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 			vscode.postMessage({ updateAllSpacesBreakpointsInfo: true });
 		}
 		function navbar_change() {//导航栏切换
-			var register = $(".navbar ul li :eq(0)");
 			var breakpoints = $(".navbar ul li :eq(2)");
-			register.click(function (can) {
-				console.log("11")
-				register.addClass('active');
-				breakpoints.removeClass('active')
-				$("#div_reg").css('display', 'block');
-				$("#div_mem").css('display', 'none');
-				$("#breakpointsInfo").css('display', 'none');
-	
-			});
 			breakpoints.click(function () {
 				breakpoints.addClass('active');
-				register.removeClass('active');
 				$("#breakpointsInfo").css('display', 'block');
 				$("#div_mem").css('display', 'none');
 				$("#div_reg").css('display', 'none');
@@ -560,33 +544,6 @@ function getWebviewContent(regNames?: string, regValues?: string) {
 function removeAllCliBreakpoints() {
 	vscode.commands.executeCommand("workbench.debug.viewlet.action.removeAllBreakpoints"); //VSCode
 	vscode.debug.activeDebugSession?.customRequest("removeAllCliBreakpoints"); //Debug Adapter, GDB
-}
-
-function getDebugPanelInfo() {
-	const result = {
-		registers: [{ number: "unknown", value: "loading" }],
-	};
-	// vscode.debug.activeDebugSession?.customRequest("registersRequest");
-	/*
-	.then(
-		response=>{
-			if (response && response.success) {
-				console.log("response success. Registers are:");
-				console.log(JSON.stringify(response.body.registers));
-
-				result['registers']= response.body.registers;
-
-			} else {
-				console.log("response not success! ");
-			}
-		},
-		rejects=>{
-			console.log(rejects);
-		}
-	);
-	*/
-
-	//return JSON.stringify(result.registers);
 }
 
 export const getUriForDebugMemory = (
