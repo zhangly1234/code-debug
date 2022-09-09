@@ -963,24 +963,6 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			this.sendResponse(response);
 		}
 	}
-	//czy TODO make RegisterValueArguments, etc.
-	protected async registersValuesRequest(response?: any, args?: any): Promise<void> {
-		const regValues = await this.miDebugger.getRegistersValues();
-		// this.sendEvent({ event: "messagesByEvent", body: "Registers info gathered. Gonna send it with updateRegistersEvent. " } as DebugProtocol.Event);
-		this.sendEvent({ event: "updateRegistersValuesEvent", body: regValues } as DebugProtocol.Event);
-
-		// regs =>{
-		// 	response.body = {
-		// 		registers: regs
-		// 	};
-		// 	this.sendResponse(response);
-		// }
-	}
-	protected async registersNamesRequest(response: DebugProtocol.Response, arg?: {}) {
-		const regNames = await this.miDebugger.getRegistersNames();
-		// this.sendEvent({ event: "messagesByEvent", body: "Registers info gathered. Gonna send it with updateRegistersEvent. " } as DebugProtocol.Event);
-		this.sendEvent({ event: "updateRegistersNamesEvent", body: regNames } as DebugProtocol.Event);
-	}
 
 	protected pauseRequest(
 		response: DebugProtocol.ContinueResponse,
@@ -1240,18 +1222,6 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 	///返回消息可以用Event或者Response。用Response更规范，用Event代码更简单。
 	protected customRequest(command: string, response: DebugProtocol.Response, args: any): void {
 		switch (command) {
-			case "registersValuesRequest":
-				this.registersValuesRequest(response, {});
-				response.message =
-					"Register Values Request Received. Asking Debugger. updateRegistersValuesEvent comes later.";
-				this.sendResponse(response);
-				break;
-			case "registersNamesRequest":
-				this.registersNamesRequest(response, {});
-				response.message =
-					"Register Names Request Received. Asking Debugger. updateRegistersNamesEvent comes later.";
-				this.sendResponse(response);
-				break;
 			case "eventTest":
 				this.sendEvent({ event: "eventTest", body: ["test"] } as DebugProtocol.Event);
 				this.sendResponse(response);
