@@ -23,6 +23,3 @@ jobs:
 
     - name: Stylecheck Project Documentation
       run: npm run prettier-check-docs
-
-    - name: Lint Project Documentation
-      run: npm run lint-docs

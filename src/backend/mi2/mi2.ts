@@ -12,10 +12,7 @@ import * as ChildProcess from "child_process";
 import { EventEmitter } from "events";
 import { parseMI, MINode } from "../mi_parse";
 import * as linuxTerm from "../linux/console";
-import * as net from "net";
-import * as fs from "fs";
 import * as path from "path";
-import { riscvRegNames } from "../../frontend/webview";
 
 export function escape(str: string) {
 	return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
