@@ -41,6 +41,14 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const goToKernelCmd = vscode.commands.registerCommand(
+		"code-debug.goToKernel",
+		() => {	
+			vscode.debug.activeDebugSession?.customRequest("goToKernel");
+			vscode.window.showInformationMessage("go to kernel");
+		}
+	);
+
 	const disableCurrentSpaceBreakpointsCmd = vscode.commands.registerCommand(
 		"code-debug.disableCurrentSpaceBreakpoints",
 		() => {
@@ -49,18 +57,20 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
-	const updateAllSpacesBreakpointsInfoCmd = vscode.commands.registerCommand(
-		"updateAllSpacesBreakpointsInfo",
-		() => {
-			vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
-		}
-	);
+	// const updateAllSpacesBreakpointsInfoCmd = vscode.commands.registerCommand(
+	// 	"updateAllSpacesBreakpointsInfo",
+	// 	() => {
+	// 		vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
+	// 	}
+	// );
+
 	context.subscriptions.push(
 		removeDebugFileCmd,
 		setKernelInOutBreakpointsCmd,
 		removeAllCliBreakpointsCmd,
 		disableCurrentSpaceBreakpointsCmd,
-		updateAllSpacesBreakpointsInfoCmd
+		//updateAllSpacesBreakpointsInfoCmd,
+        goToKernelCmd,
 	);
 
 	const disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
@@ -83,9 +93,10 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 					if (message.type === "event") {
 						//如果（因为断点等）停下
+
 						if (message.event === "stopped") {
 							//console.log("webview should update now. sending eventTest");
-							vscode.debug.activeDebugSession?.customRequest("eventTest");
+							//vscode.debug.activeDebugSession?.customRequest("eventTest");
 							//console.log("evenTest sent. Requesting registersNamesRequest and registersValuesRequest. ")
 							//请求寄存器信息
 							vscode.debug.activeDebugSession?.customRequest("registersNamesRequest");
@@ -94,11 +105,12 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.debug.activeDebugSession?.customRequest("listBreakpoints");
 						} //处理自定义事件
 						else if (message.event === "eventTest") {
-							//console.log("Extension Received eventTest");
-						} else if (message.event === "kernelToUserBorder") {
+							console.log("Extension Received eventTest");
+						} 
+						else if (message.event === "kernelToUserBorder") {
 							//到达内核态->用户态的边界
 							// removeAllCliBreakpoints();
-							vscode.window.showInformationMessage("switched to " + userDebugFile + " breakpoints");
+							vscode.window.showInformationMessage("will switched to " + userDebugFile + " breakpoints");
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
 								debugFilepath:
 									os.homedir() +
@@ -110,6 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
 								"src/bin/" + userDebugFile + ".rs"
 							);
 							// TODO@werifu: show User space
+							//vscode.debug.activeDebugSession?.customRequest("disableCurrentSpaceBreakpoints");
 							vscode.window.showInformationMessage(
 								"All breakpoints removed. Symbol file " +
 									userDebugFile +
@@ -117,13 +130,36 @@ export function activate(context: vscode.ExtensionContext) {
 							);
 							console.log("/////////////////////////kernelToUserBorder///////////////////");
 						}
+                        //系统调用，从用户态进入内核的trap处理函数
+						else if (message.event === "trap_handle") {
+							
+						//vscode.window.showInformationMessage("switched to trap_handle");
+							vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
+								debugFilepath:
+									os.homedir() +
+									"/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
+							});
+							vscode.debug.activeDebugSession?.customRequest(
+								"updateCurrentSpace",
+								"src/trap/mod.rs"
+							);
+						vscode.window.showInformationMessage("go to kernel trap_handle");
+						}
 						//当前在内核态
 						else if (message.event === "inKernel") {
 							// TODO@werifu: show Kernel space
 							//removeAllCliBreakpoints();
 							vscode.window.showInformationMessage("switched to kernel breakpoints");
 							console.log("/////////////////////////INKERNEL///////////////////");
-						} else if (message.event === "info") {
+						} 
+						//当前在用户态
+						else if (message.event === "inUser") {
+							// TODO@werifu: show Kernel space
+							//removeAllCliBreakpoints();
+							vscode.window.showInformationMessage("switched to user breakpoints");
+							console.log(message.body);
+						}
+						else if (message.event === "info") {
 							console.log("//////////////INFO///////////");
 							console.log(message.body);
 						} else if (message.event === "showInformationMessage") {
