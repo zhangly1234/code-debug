@@ -54,12 +54,12 @@
 				},
 				{
 					"when": "resourceLangId == rust",
-					"command": "code-debug.disableCurrentSpaceBreakpoints",
+					"command": "code-debug.goToKernel",
 					"group": "navigation"
 				},
 				{
 					"when": "resourceLangId == rust",
-					"command": "code-debug.updateAllSpacesBreakpointsInfo",
+					"command": "code-debug.disableCurrentSpaceBreakpoints",
 					"group": "navigation"
 				}
 			]
@@ -104,19 +104,19 @@
 				}
 			},
 			{
+				"command": "code-debug.goToKernel",
+				"title": "go to kernel ",
+				"icon": {
+					"dark": "images/update-all-spaces-breakpoints-info-dark.svg",
+					"light": "images/update-all-spaces-breakpoints-info-light.svg"
+				}
+			},
+			{
 				"command": "code-debug.disableCurrentSpaceBreakpoints",
 				"title": "Disable Current Space Breakpoints",
 				"icon": {
 					"dark": "images/disable-current-space-breakpoints-dark.svg",
 					"light": "images/disable-current-space-breakpoints-light.svg"
-				}
-			},
-			{
-				"command": "code-debug.updateAllSpacesBreakpointsInfo",
-				"title": "Update All Spaces Breakpoints Info",
-				"icon": {
-					"dark": "images/update-all-spaces-breakpoints-info-dark.svg",
-					"light": "images/update-all-spaces-breakpoints-info-light.svg"
 				}
 			}
 		],
@@ -408,7 +408,7 @@
 	"devDependencies": {
 		"@istanbuljs/nyc-config-typescript": "^1.0.2",
 		"@types/mocha": "^5.2.6",
-		"@types/node": "^11.11.3",
+		"@types/node": "^11.15.54",
 		"@types/vscode": "^1.55.0",
 		"@typescript-eslint/eslint-plugin": "^5.22.0",
 		"@typescript-eslint/parser": "^5.22.0",

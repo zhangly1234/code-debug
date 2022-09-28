@@ -80,7 +80,7 @@ class AddressSpaces {
 		this.currentSpaceName = currentSpace;
 	}
 	///此函数将文件目录转换为空间名，
-	///如src/bin/initproc.rs=>‘src/bin/initproc.rs‘空间，src/trap/mod.rs=>‘kernel‘空间
+	///如src/bin/initproc.rs=>‘src/bin/proc.rs‘空间，src/trap/mod.rs=>‘kernel‘空间
 	///规则应交给用户决定。由于gdb断点的path只包含往上两级父目录名，
 	///比较完美的做法是，开始debug之前扫描一遍文件系统，让用户决定哪些文件属于kernel这个space。
 	///此处是一个权宜之计，对于当前版本的rCore刚好能用。
@@ -161,6 +161,8 @@ class AddressSpaces {
 			);
 		});
 		this.currentSpaceName = this.spaces[newIndex].name;
+
+
 	}
 	public getCurrentSpaceName() {
 		return this.currentSpaceName;
@@ -351,6 +353,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				event: "inUser",
 				body: { userProgramName: userProgramName },
 			} as DebugProtocol.Event);
+
 		}
 	}
 
@@ -487,21 +490,32 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			() => {
 				//清空该文件的断点
 				const path = args.source.path;
+				//const spaceName = this.addressSpaces.pathToSpaceName(path);
+				let spaceName ="";
 				//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），
 				//暂时不通知GDB设置断点
-				const spaceName = this.addressSpaces.pathToSpaceName(path);
-				if (spaceName !== this.addressSpaces.getCurrentSpaceName()) {
+				if (path==="src/trap/mod.rs" && args.breakpoints[0].line===65)
+				{
+					spaceName = "0";
+				}
+				else
+				{
+					spaceName = this.addressSpaces.pathToSpaceName(path);
+				}
+
+				if (spaceName === this.addressSpaces.getCurrentSpaceName() 
+				|| spaceName==="0") {
 					// TODO rules can be set by user
+					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
+					
+				} else {
 					this.sendEvent({
 						event: "showInformationMessage",
 						body: "Breakpoints Not in Current Address Space. Saved",
 					} as DebugProtocol.Event);
 					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
 					return;
-				} else {
-					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
 				}
-
 				const all = args.breakpoints.map((brk) => {
 					return this.miDebugger.addBreakPoint({
 						file: path,
@@ -1257,6 +1271,18 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				this.miDebugger.sendCliCommand("del");
 				this.customRequest("listBreakpoints", {} as DebugAdapter.Response, {});
 				break;
+			case "goToKernel":
+				this.addressSpaces.disableCurrentSpaceBreakpoints();
+				this.setBreakPointsRequest(
+					response as DebugProtocol.SetBreakpointsResponse,
+					{
+						source: { path: "src/trap/mod.rs" } as DebugProtocol.Source,
+						breakpoints: [{ line: 65 },{ line: 135 }] as DebugProtocol.SourceBreakpoint[],
+					} as DebugProtocol.SetBreakpointsArguments
+				);
+				//this.sendEvent({ event: "eventTest"} as DebugProtocol.Event);
+				this.sendEvent({ event: "trap_handle" } as DebugProtocol.Event);				
+				break;
 			////更新WebView的断点信息
 			case "listBreakpoints":
 				this.sendEvent({
@@ -1269,10 +1295,12 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				this.addressSpaces.updateCurrentSpace(args);
 			case "disableCurrentSpaceBreakpoints":
 				this.addressSpaces.disableCurrentSpaceBreakpoints();
+
 			default:
 				return this.sendResponse(response);
 		}
 	}
+
 
 	public sendDebugSessionEvent(anything: any) {
 		this.sendEvent(anything);
