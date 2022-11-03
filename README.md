@@ -12,14 +12,6 @@
 
 本项目拟实现一种基于VSCode以及云服务器的内核源代码远程调试工具：在云服务器中部署QEMU虚拟机并运行Rust操作系统，通过QEMU提供GDB接口与用户本地的网页或安装版VSCode进行连接，实现远程单步断点调试能力，提供一种对用户友好的Rust内核代码、用户态代码以及系统调用代码的调试方法。
 
-### 团队成员
-
-陈志扬 余叶 黄宗益 （北京工商大学）
-
-### 指导老师
-
-吴竞邦 （北京工商大学）
-
 
 ### 相关工作
 
@@ -71,13 +63,13 @@ TreeView是SCode已有的原生UI，可以进行数据展示，发送命令等�
 用户界面有如下功能按钮，该按钮可以在package.json和src/frontend/extension.ts中进行注册，更多解释请看 [treeview.md](./docs/treeview.md)：
 
 
-| 名称                           | 功能                                                     |      |      |      |
-| ------------------------------ | -------------------------------------------------------- | ---- | ---- | ---- |
-| gotokernel                     | 在用户态设置内核态出入口断点，从用户态重新进入内核态     |      |      |      |
-| setKernelInOutBreakpoints      | 设置内核态到用户态，用户态到内核态的边界处的断点         |      |      |      |
-| removeAllCliBreakpoints        | 重置按钮。清空编辑器，Debug Adapter, GDB中所有断点信息   |      |      |      |
-| disableCurrentSpaceBreakpoints | 令GDB清除当前设置的断点且不更改Debug Adapter中的断点信息 |      |      |      |
-| updateAllSpacesBreakpointsInfo | 手动更新断点信息表格                                     |      |      |      |
+| 名称                           | 功能                                                     |      |
+| ------------------------------ | -------------------------------------------------------- | ---- |
+| gotokernel                     | 在用户态设置内核态出入口断点，从用户态重新进入内核态     |      |
+| setKernelInOutBreakpoints      | 设置内核态到用户态，用户态到内核态的边界处的断点         |      |
+| removeAllCliBreakpoints        | 重置按钮。清空编辑器，Debug Adapter, GDB中所有断点信息   |      |
+| disableCurrentSpaceBreakpoints | 令GDB清除当前设置的断点且不更改Debug Adapter中的断点信息 |      |
+| updateAllSpacesBreakpointsInfo | 手动更新断点信息表格                                     |      |
 
 
 
@@ -468,83 +460,130 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 
 流程略长，如果出现问题欢迎提issue
 
-1. 推荐用ubuntu20.04虚拟机。其它版本请确保使用较新的`npm`和`node`。
-1. 用nodesource安装nodejs 
-1. 安装 vscode
-1. 获取risc-v工具链
-   在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本），
-   或者试试直接访问
-   [这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下。
-1. 参考[rCore指导书](https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter0/5setup-devel-env.html)配置rCore-Tutorial的环境。
-   - 推荐将`rCore-Tutorial-v3`仓库clone到home目录。
-   - 确保gdb和qemu在环境变量里。
-1. 根据[这个diff文件](./docs/rCore-mod.diff)修改rCore-Tutorial-v3的源码和编译参数.
-   - 自动替换方法：在rCore-Tutorial-v3目录下，`git apply /path/to/rCore-mod.diff`
-   - 如果自动替换失败，可以考虑根据diff文件手动修改代码
-   - 或直接用[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)的修改过的rCore-Tutorial-v3.
-1. 在os,user,easy-fs-fuse,easy-fs目录下make clean，如果命令不存在就cargo clean(此举是为了让linker.ld的更改生效)
-1. 跑一遍rCore-Tutorial-v3
-1. clone 本仓库，建议clone到home目录
-1. 在仓库目录下`npm install`
+1. Ubuntu 20.04，推荐用ubuntu20.04虚拟机。其它版本请确保使用较新的`npm`和`node`。
 
-1. 修改src/frontend/fakeMakefile.ts里的`PROJECT_PATH`
-1. 确保/src/mibase.ts/-MI2DebugSession-customRequest方法-`case setKernelInOutBreakpoints`中硬编码的文件名和行数指向rCore代码中内核的出入口
-1. 按f5启动插件
-1. 在弹出的新窗口内打开rCore-Tutorial-v3文件夹，创建launch.json（选GDB）（可根据自己需要修改）: 
-   * 重点注意`qemuPath`和`qemuArgs`两个参数。
-     * `qemuPath`用于指定qemu可执行文件的路径，如果qemu可执行文件已经在系统的PATH环境变量中，那么这里就不需要写绝对路径。
-     * `qemuArgs` 用来拼接启动qemu时所需要的命令行参数。例如对于一些实验而言，可能没有文件系统的块设备，也不需要GPU支持，那么可以把相应的命令行参数删掉。
-   * 注意，下面的配置文件假定被调试的项目放在`${userHome}/rCore-Tutorial-v3`目录下，如果您是使用的docker镜像，那么不用调整，如果是自己手动搭建的开发环境，请把相应的路径配置进行调整。
+2. 安装vscode
 
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "gdb",
-            "request": "launch",
-            "name": "Attach to Qemu",
-            "executable": "${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
-            "target": ":1234",
-            "remote": true,
-            "cwd": "${workspaceRoot}",
-            "valuesFormatting": "parseText",
-            "gdbpath": "riscv64-unknown-elf-gdb",
-            "showDevDebugOutput":true,
-            "internalConsoleOptions": "openOnSessionStart",
-            "printCalls": true,
-            "stopAtConnect": true,
-            "qemuPath": "qemu-system-riscv64",
-            "qemuArgs": [
-                "-M",
-                "128m",
-                "-machine",
-                "virt",
-                "-bios",
-                "${userHome}/rCore-Tutorial-v3/bootloader/rustsbi-qemu.bin",
-                "-display",
-                "none",
-                "-device",
-                "loader,file=${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os.bin,addr=0x80200000",
-                "-drive",
-                "file=${userHome}/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/fs.img,if=none,format=raw,id=x0",
-                "-device",
-                "virtio-blk-device,drive=x0",
-                "-device",
-                "virtio-gpu-device",
-                "-device",
-                "virtio-keyboard-device",
-                "-device",
-                "virtio-mouse-device",
-                "-serial",
-                "stdio",
-                "-s",
-                "-S"
-            ]
-        },
-    ]
-}
-```
+   ```
+   snap install --classic code
+   ```
+
+3. Rust 开发环境配置，qemu安装，可以参考[rCore指导书](https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter0/5setup-devel-env.html)，也可以使用下面命令直接安装
+
+   ```
+   Rust 开发环境配置主要步骤如下：
+   sudo apt install curl //要用apt安装curl
+   curl https://sh.rustup.rs -sSf | sh
+   source $HOME/.cargo/env
+   rustup install nightly
+   rustup default nightly
+   
+   qemu安装
+   # 安装编译所需的依赖包
+   sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev \
+                 gawk build-essential bison flex texinfo gperf libtool patchutils bc \
+                 zlib1g-dev libexpat-dev pkg-config  libglib2.0-dev libpixman-1-dev libsdl2-dev \
+                 git tmux python3 python3-pip ninja-build
+   # 下载源码包
+   # 如果下载速度过慢可以使用我们提供的百度网盘链接：https://pan.baidu.com/s/1dykndFzY73nqkPL2QXs32Q
+   # 提取码：jimc
+   wget https://download.qemu.org/qemu-7.0.0.tar.xz
+   # 解压
+   tar xvJf qemu-7.0.0.tar.xz
+   # 编译安装并配置 RISC-V 支持
+   cd qemu-7.0.0
+   ./configure --target-list=riscv64-softmmu,riscv64-linux-user  # 如果要支持图形界面，可添加 " --enable-sdl" 参数
+   make -j$(nproc)
+   
+   #配置qemu环境变量：
+   #编辑~/.bashrc文件，在最后一行添加下面语句：
+   export PATH=$PATH:/path/to/qemu-7.0.0/build
+   
+   #此时我们可以确认 QEMU 的版本：
+   qemu-system-riscv64 --version
+   qemu-riscv64 --version
+   ```
+
+4. npm安装，尽量安装较新的版本：
+
+   ```
+   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+   #查看版本信息
+   node --version
+   npm --version  
+   ```
+
+5. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本）， 或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下
+
+   ```
+   # 需要配置工具链的环境变量：
+   # 编辑~/.bashrc文件，在最后一行添加下面语句：
+   export PATH=$PATH:/home/username/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14/bin
+   ```
+
+6. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，具体修改可见[这个diff文件](./docs/rCore-mod.diff)，可以下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
+
+7. clone 本仓库，建议clone到home目录
+
+8. 在仓库目录下运行 npm install 命令
+
+9. 在vscode中打开本项目，按F5执行，会弹出一个新的窗口
+
+10. 在新窗口中打开rCore-Tutorial-v3项目，在 .vscode 文件中添加 launch.json文件，并输入以下内容，按F5就可以启动gdb并调试。
+
+    如果GDB并没有正常启动，可以尝试把下面的gdbpath改成绝对路径(如“/home/username/riscv64-unknown-elf-toolchain-10.2.0-2020.12.8-x86_64-linux-ubuntu14/bin”)。
+
+    ```
+    //launch.json
+    {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "type": "gdb",
+                "request": "launch",
+                "name": "Attach to Qemu",
+                "executable": "${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
+                "target": ":1234",
+                "remote": true,
+                "cwd": "${workspaceRoot}",
+                "valuesFormatting": "parseText",
+                "gdbpath": "riscv64-unknown-elf-gdb",
+                "showDevDebugOutput":true,
+                "internalConsoleOptions": "openOnSessionStart",
+                "printCalls": true,
+                "stopAtConnect": true,
+                "qemuPath": "qemu-system-riscv64",
+                "qemuArgs": [
+                    "-M",
+                    "128m",
+                    "-machine",
+                    "virt",
+                    "-bios",
+                    "${userHome}/rCore-Tutorial-v3/bootloader/rustsbi-qemu.bin",
+                    "-display",
+                    "none",
+                    "-device",
+                    "loader,file=${userHome}/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os.bin,addr=0x80200000",
+                    "-drive",
+                    "file=${userHome}/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/fs.img,if=none,format=raw,id=x0",
+                    "-device",
+                    "virtio-blk-device,drive=x0",
+                    "-device",
+                    "virtio-gpu-device",
+                    "-device",
+                    "virtio-keyboard-device",
+                    "-device",
+                    "virtio-mouse-device",
+                    "-serial",
+                    "stdio",
+                    "-s",
+                    "-S"
+                ]
+            },
+        ]
+    }
+    ```
 
 ### 使用
 
@@ -557,8 +596,6 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 1. 按continue按钮开始运行rCore-Tutorial
 1. 当运行到位于内核出口的断点时，插件会自动切换到用户态的断点
 1. 在用户态程序中如果想观察内核内的执行流，可以点击gotokernel按钮，然后点击继续按钮，程序会停在内核的入口断点，接下来，可以在内核态设置断点，点击继续，运行到内核的出口断点之后，会回到用户态。
-
-[视频演示](./docs/imgs/pre-2022-07-24.mp4)
 
 ### 功能
 
@@ -608,8 +645,7 @@ Vec和VecDeque的pointer值通过gdb查看是错的（都是0x1,0x2之类的很�
 1. 添加`customRequest`(mibase.ts)
    1. 收集数据：GDB命令（mi2.ts中的方法，或者直接用this.miDebugger.sendCliCommand）
    1. 返回信息：Events/Responses
-1. 插件进程解析Events/Responses并转发至WebView（extension.ts）
-1. 添加WebView界面(extension.ts)
+1. 在treeiew上展示
 
 ### Multiple Debug File Support
 
