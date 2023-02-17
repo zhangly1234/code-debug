@@ -13,13 +13,14 @@ export function activate(context: vscode.ExtensionContext) {
 	//=========================================================================================
 	const kernelInOutBreakpointArgs = 1;
 	const userDebugFile = "initproc"; //可以修改为其它用户程序名，如matrix
+	const your_path_to_core = os.homedir() + "/rCore-Tutorial-v3";
 	//========================================================================================
 
 	const removeDebugFileCmd = vscode.commands.registerCommand("code-debug.removeDebugFile", () => {
 		// 自定义请求.customRequest函数见/src/mibase.ts
 		vscode.debug.activeDebugSession?.customRequest("removeDebugFile", {
 			debugFilepath:
-				os.homedir() + "/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/initproc",
+			your_path_to_core+"/user/target/riscv64gc-unknown-none-elf/release/initproc",
 		});
 		// 弹出窗口
 		vscode.window.showInformationMessage("symbol file `initproc` removed");
@@ -117,8 +118,8 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.window.showInformationMessage("will switched to " + userDebugFile + " breakpoints");
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
 								debugFilepath:
-									os.homedir() +
-									"/rCore-Tutorial-v3/user/target/riscv64gc-unknown-none-elf/release/" +
+									your_path_to_core +
+									"/user/target/riscv64gc-unknown-none-elf/release/" +
 									userDebugFile,
 							});
 							vscode.debug.activeDebugSession?.customRequest(
@@ -140,8 +141,8 @@ export function activate(context: vscode.ExtensionContext) {
 						//vscode.window.showInformationMessage("switched to trap_handle");
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
 								debugFilepath:
-									os.homedir() +
-									"/rCore-Tutorial-v3/os/target/riscv64gc-unknown-none-elf/release/os",
+									your_path_to_core +
+									"/os/target/riscv64gc-unknown-none-elf/release/os",
 							});
 							vscode.debug.activeDebugSession?.customRequest(
 								"updateCurrentSpace",
