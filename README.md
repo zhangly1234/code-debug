@@ -2,6 +2,8 @@
 
 支持Rust语言的源代码级内核调试工具
 
+QQ群：634604673
+
 ## 引言
 
 ### 项目背景
@@ -467,7 +469,8 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 
 ### 安装-方法2
 
-流程略长，如果出现问题欢迎提issue
+流程略长，如果出现问题欢迎提issue. rCore-Tutorial-Code-2023S的安装方法见[这里](./docs/2023S.md)
+
 
 1. 推荐用ubuntu20.04虚拟机。其它版本请确保使用较新的`npm`和`node`。
 
@@ -519,9 +522,9 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
    npm --version
    ```
 
-1. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链（往下拉找到GNU Embedded Toolchain — v2020.12.8, 下载ubuntu版本）， 或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下
+1. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下并解压，将其中的bin/文件夹加入环境变量.
 
-1. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，具体修改可见这个[diff文件](https://github.com/zhangly1234/code-debug/blob/master/docs/rCore-mod.diff)，可以下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
+1. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，具体修改可见这个[diff文件](https://github.com/chenzhiy2001/code-debug/blob/master/docs/rCore-mod.diff)，可以下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
 
 1. clone 本仓库，建议clone到home目录
 
@@ -529,7 +532,7 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 
 1. 在vscode中打开本项目，按F5执行，会弹出一个新的窗口
 
-1. 在新窗口中打开rCore-Tutorial-v3项目，在 .vscode 文件中添加 launch.json文件，并输入以下内容，按F5就可以启动gdb并调试。
+1. 在新窗口中打开rCore-Tutorial-v3项目，在 .vscode 文件夹中添加 launch.json文件，并输入以下内容，然后保存并再编译一遍rCore，接着在新窗口内按F5就可以启动gdb并调试。
 
    如果GDB并没有正常启动，可以尝试把下面的gdbpath改成绝对路径(如“/home/username/riscv64-unknown-elf-toolchain-10.2.0-2020.12.8-x86_64-linux-ubuntu14/bin”)。
 
