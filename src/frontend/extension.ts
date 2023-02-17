@@ -129,7 +129,7 @@ export function activate(context: vscode.ExtensionContext) {
 							// TODO@werifu: show User space
 							//vscode.debug.activeDebugSession?.customRequest("disableCurrentSpaceBreakpoints");
 							vscode.window.showInformationMessage(
-								"All breakpoints removed. Symbol file " +
+								"All breakpoints in current space removed. Symbol file " +
 									userDebugFile +
 									" added. Now you can set user program breakpoints.  line 13 println!(\"aaaaa... recommemded if it's initproc.rs"
 							);
