@@ -1,0 +1,45 @@
+diff --git a/easy-fs-fuse/src/main.rs b/easy-fs-fuse/src/main.rs
+index bb9ff761..4568564f 100644
+--- a/easy-fs-fuse/src/main.rs
++++ b/easy-fs-fuse/src/main.rs
+@@ -59,11 +59,11 @@ fn easy_fs_pack() -> std::io::Result<()> {
+             .write(true)
+             .create(true)
+             .open(format!("{}{}", target_path, "fs.img"))?;
+-        f.set_len(16 * 2048 * 512).unwrap();
++        f.set_len(1600 * 2048 * 512).unwrap();
+         f
+     })));
+-    // 16MiB, at most 4095 files
+-    let efs = EasyFileSystem::create(block_file, 16 * 2048, 1);
++    // 1600MiB, at most 4095*100 files
++    let efs = EasyFileSystem::create(block_file, 1600 * 2048, 1);
+     let root_inode = Arc::new(EasyFileSystem::root_inode(&efs));
+     let apps: Vec<_> = read_dir(src_path)
+         .unwrap()
+diff --git a/os/Cargo.toml b/os/Cargo.toml
+index a93dc62a..97bb9420 100644
+--- a/os/Cargo.toml
++++ b/os/Cargo.toml
+@@ -22,3 +22,8 @@ tinybmp = "0.3.1"
+ 
+ [profile.release]
+ debug = true
++opt-level=0
++# debuginfo-level = 1
++
++# Debuginfo level for the compiler.
++# debuginfo-level-rustc = 2
+diff --git a/os/src/config.rs b/os/src/config.rs
+index 52839a3f..d4d8912d 100644
+--- a/os/src/config.rs
++++ b/os/src/config.rs
+@@ -5,7 +5,7 @@
+ /// user app's stack size
+ pub const USER_STACK_SIZE: usize = 4096 * 2;
+ /// kernel stack size
+-pub const KERNEL_STACK_SIZE: usize = 4096 * 2;
++pub const KERNEL_STACK_SIZE: usize = 4096 * 20;
+ /// kernel heap size
+ pub const KERNEL_HEAP_SIZE: usize = 0x200_0000;
+ /// physical memory end address

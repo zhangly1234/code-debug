@@ -1,0 +1,73 @@
+diff --git a/.cargo/config b/.cargo/config
+index e5ded8a..867bffc 100644
+--- a/.cargo/config
++++ b/.cargo/config
+@@ -3,5 +3,5 @@ target = "riscv64gc-unknown-none-elf"
+ 
+ [target.riscv64gc-unknown-none-elf]
+ rustflags = [
+-    "-Clink-args=-Tsrc/linker.ld",
++    "-Clink-args=-Tsrc/linker.ld","-Zunstable-options",
+ ]
+diff --git a/Cargo.toml b/Cargo.toml
+index bdd5019..c99434e 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -14,6 +14,9 @@ lock_api = "=0.4.6"
+ lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+ 
+ [profile.release]
+-opt-level = "z" # Optimize for size.
+-strip = true    # Automatically strip symbols from the binary.
+-lto = true
++debug=true
++debuginfo-level = 1
++debuginfo-level-rustc = 2
++# opt-level = "z" # Optimize for size.
++# strip = true    # Automatically strip symbols from the binary.
++# lto = true
+diff --git a/src/bin/ch9b_initproc.rs b/src/bin/ch9b_initproc.rs
+index 1e4011d..17bb3c7 100644
+--- a/src/bin/ch9b_initproc.rs
++++ b/src/bin/ch9b_initproc.rs
+@@ -3,11 +3,14 @@
+ 
+ #[macro_use]
+ extern crate user_lib;
+-
++use user_lib::{println, getpid};
+ use user_lib::{exec, fork, wait, yield_};
+ 
+ #[no_mangle]
+ fn main() -> i32 {
++    println!("aaaaaaaaaaaaaa");
++    let a = getpid();
++    println!("pid before fork is {}",a);
+     if fork() == 0 {
+         exec("ch7b_user_shell\0", &[core::ptr::null::<u8>()]);
+     } else {
+diff --git a/src/lib.rs b/src/lib.rs
+index dc81cd8..26e6769 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -18,7 +18,7 @@ use buddy_system_allocator::LockedHeap;
+ pub use console::{flush, STDIN, STDOUT};
+ pub use syscall::*;
+ 
+-const USER_HEAP_SIZE: usize = 16384;
++const USER_HEAP_SIZE: usize = 32768*4;
+ 
+ static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
+ 
+diff --git a/src/linker.ld b/src/linker.ld
+index f3f996e..ef81405 100644
+--- a/src/linker.ld
++++ b/src/linker.ld
+@@ -28,6 +28,5 @@ SECTIONS
+     }
+     /DISCARD/ : {
+         *(.eh_frame)
+-        *(.debug*)
+     }
+ }
+\ No newline at end of file
