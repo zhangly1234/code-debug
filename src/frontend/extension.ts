@@ -131,7 +131,7 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.window.showInformationMessage(
 								"All breakpoints in current space removed. Symbol file " +
 									userDebugFile +
-									" added. Now you can set user program breakpoints.  line 13 println!(\"aaaaa... recommemded if it's initproc.rs"
+									" added. Now you can set user program breakpoints.  line 11 `fn main() -> i32 {` or line 13 println!(\"aaaaa... recommemded if it's initproc.rs"
 							);
 							console.log("/////////////////////////kernelToUserBorder///////////////////");
 						}
