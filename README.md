@@ -454,19 +454,6 @@ todos:
 
 ### 安装-方法1
 
-vmware虚拟磁盘：(vmware需16.2.3及以上版本)
-
-```
-链接：https://pan.baidu.com/s/1kpkPuE1I4Jm-800I0hdkEg?pwd=1234 
-提取码：1234 
---来自百度网盘超级会员V5的分享
-```
-
-用户名oslab，密码是一个空格
-注意修改下git的用户名和邮箱，并及时更新项目
-
-### 安装-方法2
-
 流程略长，如果出现问题欢迎提issue. rCore-Tutorial-Code-2023S的安装方法见[这里](./docs/2023S.md)
 
 
@@ -522,7 +509,7 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 
 1. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下并解压，将其中的bin/文件夹加入环境变量.
 
-1. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，具体修改可见这个[diff文件](https://github.com/chenzhiy2001/code-debug/blob/master/docs/rCore-mod.diff)，可以下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
+1. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
 
 1. clone 本仓库，建议clone到home目录
 
@@ -594,7 +581,7 @@ vmware虚拟磁盘：(vmware需16.2.3及以上版本)
 1. 按F5键，即可开始使用本插件。
 1. 清除所有断点（removeAllCliBreakpoints按钮）
 1. 设置内核入口（setKernelInBreakpoints按钮）、出口断点（setKernelOutBreakpoints按钮）
-1. 设置内核代码和用户程序代码的断点（推荐initproc.rs的println!语句）
+1. 设置内核代码和用户程序代码的断点（这里有个bug尚未解决：必须得在initproc.rs的println!语句或`fn main()`处设置断点）
 1. 按continue按钮开始运行rCore-Tutorial
 1. 当运行到位于内核出口的断点时，插件会自动切换到用户态的断点
 1. 在用户态程序中如果想观察内核内的执行流，可以点击gotokernel按钮，然后点击继续按钮，程序会停在内核的入口断点，这时，可以先把内核出口断点设置好（点击setKernelOutBreakpoints按钮），接下来，可以在内核态设置断点，点击继续，运行到内核的出口断点之后，会回到用户态。
