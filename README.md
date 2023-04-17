@@ -484,13 +484,19 @@ todos:
    # 解压
    tar xvJf qemu-7.0.0.tar.xz
    # 编译安装并配置 RISC-V 支持
+   
    cd qemu-7.0.0
+
    ./configure --target-list=riscv64-softmmu,riscv64-linux-user  # 如果要支持图形界面，可添加 " --enable-sdl" 参数
+
    make -j$(nproc)
    
    #配置qemu环境变量：
    #编辑~/.bashrc文件，在最后一行添加下面语句：
    export PATH=$PATH:/path/to/qemu-7.0.0/build
+   # 注意，执行以上操作时，不能直接复制粘贴,要把/path/to改成qemu所在的文件夹。
+   # 另外，执行完以上操作后，要重启终端才能成功添加环境变量。若配置qemu失败，不妨输入$PATH查看环境变量有没有正确添加。
+
    
    #此时我们可以确认 QEMU 的版本：
    qemu-system-riscv64 --version

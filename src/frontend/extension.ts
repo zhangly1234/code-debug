@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
 		// 自定义请求.customRequest函数见/src/mibase.ts
 		vscode.debug.activeDebugSession?.customRequest("removeDebugFile", {
 			debugFilepath:
-			your_path_to_core+"/user/target/riscv64gc-unknown-none-elf/release/initproc",
+			your_path_to_core + "/user/target/riscv64gc-unknown-none-elf/release/initproc",
 		});
 		// 弹出窗口
 		vscode.window.showInformationMessage("symbol file `initproc` removed");
@@ -51,7 +51,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const goToKernelCmd = vscode.commands.registerCommand(
 		"code-debug.goToKernel",
-		() => {	
+		() => {
 			vscode.debug.activeDebugSession?.customRequest("goToKernel");
 			vscode.window.showInformationMessage("go to kernel");
 		}
@@ -79,7 +79,7 @@ export function activate(context: vscode.ExtensionContext) {
 		removeAllCliBreakpointsCmd,
 		disableCurrentSpaceBreakpointsCmd,
 		//updateAllSpacesBreakpointsInfoCmd,
-        goToKernelCmd,
+		goToKernelCmd,
 	);
 
 	const disposable = vscode.debug.registerDebugAdapterTrackerFactory("*", {
@@ -104,14 +104,13 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 					if (message.type === "event") {
 						//如果（因为断点等）停下
-                        //更新TreeView中的信息 
+						//更新TreeView中的信息
 						if (message.event === "stopped") {
-	
 							vscode.debug.activeDebugSession?.customRequest("update");
 						} //处理自定义事件
 						else if (message.event === "eventTest") {
 							console.log("Extension Received eventTest");
-						} 
+						}
 						else if (message.event === "kernelToUserBorder") {
 							//到达内核态->用户态的边界
 							// removeAllCliBreakpoints();
@@ -135,10 +134,9 @@ export function activate(context: vscode.ExtensionContext) {
 							);
 							console.log("/////////////////////////kernelToUserBorder///////////////////");
 						}
-                        //从用户态进入内核的trap处理函数
+						//从用户态进入内核的trap处理函数
 						else if (message.event === "trap_handle") {
-							
-						//vscode.window.showInformationMessage("switched to trap_handle");
+							//vscode.window.showInformationMessage("switched to trap_handle");
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
 								debugFilepath:
 									your_path_to_core +
@@ -148,7 +146,7 @@ export function activate(context: vscode.ExtensionContext) {
 								"updateCurrentSpace",
 								"src/trap/mod.rs"
 							);
-						vscode.window.showInformationMessage("go to kernel trap_handle");
+							vscode.window.showInformationMessage("go to kernel trap_handle");
 						}
 						//当前在内核态
 						else if (message.event === "inKernel") {
@@ -156,7 +154,7 @@ export function activate(context: vscode.ExtensionContext) {
 							//removeAllCliBreakpoints();
 							vscode.window.showInformationMessage("switched to kernel breakpoints");
 							console.log("/////////////////////////INKERNEL///////////////////");
-						} 
+						}
 						//当前在用户态
 						else if (message.event === "inUser") {
 							// TODO@werifu: show Kernel space

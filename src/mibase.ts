@@ -493,12 +493,10 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				const spaceName = this.addressSpaces.pathToSpaceName(path);
 				//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），暂时不通知GDB设置断点
 				//如果这个断点是当前地址空间，或者是内核入口断点，那么就通知GDB立即设置断点
-				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path==="src/trap/mod.rs" && args.breakpoints[0].line===30)
+				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path === "src/trap/mod.rs" && args.breakpoints[0].line === 30)
 				) {
 					// TODO rules can be set by user
-					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
-					
-				} 
+					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);				}
 				else {
 					this.sendEvent({
 						event: "showInformationMessage",
@@ -1265,8 +1263,8 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					} as DebugProtocol.SetBreakpointsArguments
 				);
 				break;
-			case "setKernelOutBreakpoints": //out only
-				break;
+			// case "setKernelOutBreakpoints": //out only
+				// break;
 			case "removeAllCliBreakpoints":
 				this.addressSpaces.removeAllBreakpoints();
 				this.miDebugger.sendCliCommand("del");
@@ -1282,7 +1280,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					} as DebugProtocol.SetBreakpointsArguments
 				);
 				//this.sendEvent({ event: "eventTest"} as DebugProtocol.Event);
-				this.sendEvent({ event: "trap_handle" } as DebugProtocol.Event);				
+				this.sendEvent({ event: "trap_handle" } as DebugProtocol.Event);
 				break;
 			// case "update":
 			// 	this.sendEvent({

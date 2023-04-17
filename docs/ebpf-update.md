@@ -1,9 +1,10 @@
-## 升级rCore-Tutorial版本时遇到的问题
+## 升级 rCore-Tutorial 版本时遇到的问题
 
-我尝试把 [rcore-ebpf](https://github.com/cubele/rCore-Tutorial-Code-2022A/tree/main) 移植到最新版本的rCore-Tutorial-v3（[链接](https://github.com/rcore-os/rCore-Tutorial-v3)）上。修改后的版本的仓库在[这里](https://github.com/chenzhiy2001/rcore-ebpf/commit/8235899cfaf70911a47acd3a586c2e1a651f34a5)。
+我尝试把 [rcore-ebpf](https://github.com/cubele/rCore-Tutorial-Code-2022A/tree/main) 移植到最新版本
+的 rCore-Tutorial-v3（[链接](https://github.com/rcore-os/rCore-Tutorial-v3)）上。修改后的版本的仓库
+在[这里](https://github.com/chenzhiy2001/rcore-ebpf/commit/8235899cfaf70911a47acd3a586c2e1a651f34a5)。
 
 遇到的问题是，执行效果和原来的不一致。具体输出见下：
-
 
 <table>
 <tr>
@@ -142,7 +143,7 @@ cmd = 9
 </td>
 </tr>
 <tr>
-<td> 
+<td>
 
 ```shell
 >> ebpf_user_maptest
@@ -169,11 +170,11 @@ cmd = 3
 [ INFO] sys_bpf cmd: 3, bpf_attr: 28488, size: 32
 [TRACE] bpf map ops fd:1879048194, op:Delete key:6f7c value:0
 [ WARN] convert result get error! EINVAL
-test delete index=3, this should fail since you cannot delete an array entry 
+test delete index=3, this should fail since you cannot delete an array entry
 cmd = 1
 [ INFO] sys_bpf cmd: 1, bpf_attr: 28488, size: 32
 [TRACE] bpf map ops fd:1879048194, op:LookUp key:6f7c value:6f80
-check index=3 again, and we should get a valid value=%ld 
+check index=3 again, and we should get a valid value=%ld
 bpf array tests PASSED
 Start test on bpf hash map, this is a just a test in user space
 cmd = 0
@@ -297,7 +298,7 @@ cmd = 4
 cmd = 3
 [ INFO] sys_bpf cmd: 3, bpf_attr: 28392, size: 32
 [TRACE] bpf map ops fd:1879048195, op:Delete key:6f30 value:0
-test delete key=%ld 
+test delete key=%ld
 cmd = 1
 [ INFO] sys_bpf cmd: 1, bpf_attr: 28392, size: 32
 [TRACE] bpf map ops fd:1879048195, op:LookUp key:6f30 value:6f38
@@ -330,11 +331,11 @@ cmd = 3
 [ INFO] sys_bpf cmd: 3, bpf_attr: 28488, size: 32
 [TRACE] bpf map ops fd:1879048196, op:Delete key:6f7c value:0
 [ WARN] convert result get error! EINVAL
-test delete index=3, this should fail since you cannot delete an array entry 
+test delete index=3, this should fail since you cannot delete an array entry
 cmd = 1
 [ INFO] sys_bpf cmd: 1, bpf_attr: 28488, size: 32
 [TRACE] bpf map ops fd:1879048196, op:LookUp key:6f7c value:6f80
-check index=3 again, and we should get a valid value=%ld 
+check index=3 again, and we should get a valid value=%ld
 bpf array tests PASSED
 Start test on bpf hash map, this is a just a test in user space
 cmd = 0
@@ -458,7 +459,7 @@ cmd = 4
 cmd = 3
 [ INFO] sys_bpf cmd: 3, bpf_attr: 28392, size: 32
 [TRACE] bpf map ops fd:1879048197, op:Delete key:6f30 value:0
-test delete key=%ld 
+test delete key=%ld
 cmd = 1
 [ INFO] sys_bpf cmd: 1, bpf_attr: 28392, size: 32
 [TRACE] bpf map ops fd:1879048197, op:LookUp key:6f30 value:6f38
@@ -467,9 +468,10 @@ try get key=%ld again, this should fail
 bpf hashmap tests OK
 ALL TEST PASSED!
 Shell: Process 2 exited with code 0
-``` 
+```
+
 </td> 
-<td> 
+<td>
 
 ```shell
 >> ebpf_user_maptest
@@ -484,9 +486,9 @@ test update_elem index=3 to %ld, and get value=%ld
 cmd = 2
 test index exceed max_entry
 cmd = 3
-test delete index=3, this should fail since you cannot delete an array entry 
+test delete index=3, this should fail since you cannot delete an array entry
 cmd = 1
-check index=3 again, and we should get a valid value=%ld 
+check index=3 again, and we should get a valid value=%ld
 bpf array tests PASSED
 Start test on bpf hash map, this is a just a test in user space
 cmd = 0
@@ -543,32 +545,35 @@ cmd = 1
 get kv: (%lx, %ld)
 cmd = 4
 cmd = 3
-test delete key=%ld 
+test delete key=%ld
 cmd = 1
 try get key=%ld again, this should fail
 bpf hashmap tests OK
 ALL TEST PASSED!
-``` 
+```
+
 </td>
 </tr>
 <tr>
-<td> 
+<td>
 
 ```shell
 >> ebpf_kern_context
 [kernel] Exception(InstructionPageFault) in application, bad addr = 0x0, bad instruction = 0x0, core dumped.
 Shell: Process 2 exited with code -2
-``` 
-</td> <td> 
+```
+
+</td> <td>
 
 ```shell
 >> ebpf_kern_context
 [kernel] Segmentation Fault, SIGSEGV=11
-``` 
+```
+
 </td>
 </tr>
 <tr>
-<td> 
+<td>
 
 ```shell
 >> ebpf_user_loadprogextest
@@ -676,8 +681,9 @@ r31 = 0
 [ INFO] run attached progs exit!
 [kernel] breakpoint at 0x805e7002
 Shell: Process 2 exited with code 0
-``` 
-</td> <td> 
+```
+
+</td> <td>
 
 ```shell
 >> ebpf_user_loadprogextest
@@ -768,12 +774,12 @@ r29 = 0
 r30 = 0
 r31 = 0
 [kernel] breakpoint at 0x816f8002
-``` 
+```
 
 </td>
 </tr>
 <tr>
-<td> 
+<td>
 
 ```shell
 >> ebpf_user_naivetest
@@ -781,23 +787,20 @@ cmd = 0
 [ INFO] sys_bpf cmd: 0, bpf_attr: 0, size: 0
 [ WARN] convert result get error! EINVAL
 Shell: Process 2 exited with code 0
-``` 
-</td> <td> 
+```
+
+</td> <td>
 
 ```shell
 >> ebpf_user_naivetest
 cmd = 0
-``` 
+```
 
 </td>
 </tr>
 </table>
 
+目前怀疑问题可能出现在 user 模块中，因为 rCore-Tutorial-Code-2022A 和 rCore-Tutorial-v3 的 user 模块
+有所不同。
 
-
-
-
-目前怀疑问题可能出现在user模块中，因为rCore-Tutorial-Code-2022A和rCore-Tutorial-v3的user模块有所不同。
-
-此外，rCore-Tutorial-v3的中断处理较之前有所变化，也可能导致这些错误。
-
+此外，rCore-Tutorial-v3 的中断处理较之前有所变化，也可能导致这些错误。
