@@ -515,6 +515,45 @@ todos:
 
 1. 获取risc-v工具链 在[sifive官网](https://www.sifive.com/software)下载risc-v工具链或者试试直接访问[这里](https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2020.04.1-x86_64-linux-ubuntu14.tar.gz)。下载后将该文件复制到home目录下并解压，将其中的bin/文件夹加入环境变量.
 
+    > Sifive官网提供的工具链没有python支持，因此，如果想用ebpf side-stub，我们要自己编译一份工具链：(更多信息见<https://github.com/riscv-collab/riscv-gnu-toolchain/issues/925>)
+    > 
+    > 确保有 15GiB 剩余硬盘空间
+    > 
+    > `sudo apt install python-is-python3`
+    > 
+    > `sudo apt-get install autoconf automake autotools-dev curl python3 libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev ninja-build`
+    > 
+    > `sudo apt install python3-dev`
+    > 
+    > `git clone https://github.com/riscv/riscv-gnu-toolchain`
+    > 
+    > `cd riscv-gnu-toolchain`
+    > 
+    > `./configure --prefix=/opt/riscv`
+    > 
+    > `sudo make`
+    > 
+    > 就可以自动下载、编译。编译完成后，
+    >
+    > `/opt/riscv/bin/riscv64-unknown-elf-gdb`
+    > 
+    > `(gdb) python`
+    > 
+    >  `print("114514")`
+    > 
+    >  `end`
+    >
+    > 如果gdb输出`114514`就表示有python支持。
+    > 
+    > 最后将`/opt/riscv/bin`加入PATH。如果之前将sifive提供的工具链也加入了PATH，应该要把它去掉。
+    >
+    > 如果你的python没有pyserial模块，应该安装一下：
+    > 
+    > `pip3 install pyserial`
+    >
+    > 如果想用venv, 可以参考[这篇文章](https://interrupt.memfault.com/blog/using-pypi-packages-with-gdb)。
+
+
 1. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
 
 1. clone 本仓库，建议clone到home目录
