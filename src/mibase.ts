@@ -1293,7 +1293,10 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				this.addressSpaces.updateCurrentSpace(args);
 			case "disableCurrentSpaceBreakpoints":
 				this.addressSpaces.disableCurrentSpaceBreakpoints();
-
+			case 'connect_pts':
+				this.miDebugger.sendCliCommand('-side-stub target remote '+args);
+			case 'tracepoint_then_get_registers':
+				this.miDebugger.sendCliCommand('-side-stub tracepoint-then-get-registers '+ args);
 			default:
 				return this.sendResponse(response);
 		}

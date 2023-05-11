@@ -609,6 +609,8 @@ todos:
                    "virtio-mouse-device",
                    "-serial",
                    "stdio",
+                   "-serial",
+                   "pty",
                    "-s",
                    "-S"
                ]

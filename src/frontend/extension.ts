@@ -2,6 +2,36 @@ import * as vscode from "vscode";
 import * as os from "os";
 
 export function activate(context: vscode.ExtensionContext) {
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('code-debug.eBPFPanel', () => {
+		  const panel = vscode.window.createWebviewPanel(
+			'eBPFPanel',
+			'eBPFPanel',
+			vscode.ViewColumn.Two,
+			{
+			  enableScripts: true
+			}
+		  );
+	
+		  panel.webview.html = getWebviewContent();
+	
+		  // Handle messages from the webview
+		  panel.webview.onDidReceiveMessage(
+			message => {
+			  switch (message.command) {
+				case 'connect_pts':
+					vscode.debug.activeDebugSession?.customRequest("connect_pts",message.text);
+				case 'tracepoint':
+					vscode.debug.activeDebugSession?.customRequest("tracepoint_then_get_registers","sys_open");//todo
+			  }
+			},
+			undefined,
+			context.subscriptions
+		  );
+		})
+	  );
+
 	vscode.debug.onDidStartDebugSession((e: vscode.DebugSession) => {
 		vscode.commands.executeCommand("core-debugger.startPanel"); //当启动调试会话时
 	});
@@ -216,3 +246,41 @@ export const getUriForDebugMemory = (
 		(range ? `?range=${range.fromOffset}:${range.toOffset}` : "")
 	);
 };
+
+function getWebviewContent(){
+	return `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>WebView</title>
+	</head>
+	<script>
+		function connect(){
+			const vscode = acquireVsCodeApi();
+			vscode.postMessage({
+								command: 'connect_pts',
+								text: '/dev/pts/'+document.getElementById('pts').text
+							});
+		}
+		
+		function tr(){
+			const vscode = acquireVsCodeApi();
+			vscode.postMessage({
+								command: 'tracepoint',
+								text: 'tracepoint_then_get_registers'
+							});
+		}
+	</script>
+	<body>
+		
+	/dev/pts/<input type="text" id="pts">
+
+	<button type="button" onclick="connect()">Connect</button> <br />
+
+	<button type="button" id="tr_button" onclick="tr()">>Set a Tracepoint at sys_open</button> <br />
+	
+
+	</body>
+	</html>`
+}

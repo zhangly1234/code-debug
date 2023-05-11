@@ -18,8 +18,6 @@
 	},
 	"main": "./out/src/frontend/extension",
 	"activationEvents": [
-		"onCommand:core-debugger.startPanel",
-		"onCommand:core-debugger.updatePanel",
 		"onDebug"
 	],
 	"categories": [
@@ -70,6 +68,11 @@
 			]
 		},
 		"commands": [
+			{
+				"command": "code-debug.eBPFPanel",
+				"title": "eBPF WebView",
+				"category": "CoreDebugger"
+			  },
 			{
 				"command": "code-debug.examineMemoryLocation",
 				"title": "Code-Debug: Examine memory location"
