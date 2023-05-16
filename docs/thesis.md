@@ -94,8 +94,8 @@ OpenVSCode Server 是 VS Code 的一个分支，它在 VSCode 原有的五层架
 rustc编译器会对代码进行比较激进的优化，例如内连函数，删除大量有助于调试的符号信息。因此，我们
 需要修改编译参数，以尽量避免编译器的优化操作。
 
-rCore-Tutorial-v3 是用 cargo 工具创建的。一般情况下，用 cargo 工具创建的 rust 项目可用
-release, debug 两种模式编译、运行。两种模式中， release 模式对代码进行较高等级的优化，删除较多调试相关
+rCore-Tutorial-v3 是用 cargo 工具创建的。一般而言，用 cargo 工具创建的 rust 项目可用
+release, debug 两种模式编译、运行。在这两种模式中， release 模式对代码进行较高等级的优化，删除较多调试相关
 的信息，而 debug 模式则对代码进行较弱等级的优化并保留了更多调试相关的信息，比较符合我们的需求。
 但是由于 rCore-Tutorial-v3 项目本身的设计缺陷，这个项目不支持使用 debug 模式进行编译。因此，
 我们需要修改 release 模式的配置文件，让编译器在 release 模式下也像在 debug 模式下一样关闭代码优化，
