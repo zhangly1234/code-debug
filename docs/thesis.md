@@ -122,22 +122,23 @@ DWARF 段[114514]在链接时被忽略。这些段对调试用户态程序非常
 启动基于 eBPF 的调试服务器（即 eBPF server）。这个基于 eBPF 的调试服务器会通过其专属的调试用串口连接到GDB上的 eBPF 调
 试处理模块。
 
-GDB 与 gdbserver、eBPF server 通过 RSP 协议[]进行通信。可以解析服务器内其他进程传递的符合
- GDB/MI 接口规范的文本数据。GDB/MI 是 GDB 面向机器的、基于行的
-文本接口。它用于支持将调试器作为 Debugger 插件的一个小模块来使用的系统开发。[2]
+GDB 与 gdbserver、eBPF server 通过 GDB 远程串行协议 (RSP)[]进行通信。RSP 是一个高层级的协议，用于
+将 GDB 连接到任何远程目标。 只要远程目标的体系结构（例如在本项目中是RISC-V）已经被 GDB 支持，并且远程目标
+实现了支持 RSP 协议的服务器端，那么 GDB 就能够远程连接到该目标。
 
 #### 2.2.4 Debug adapter
 
-Debug Adapter 是负责协调代码编辑器和 debugger（在本项目中为 gdb）的一个独立的进程。在 GDB 准备就绪后
-，Debug Adapter 进程会启动，开始监听用户浏览器中 Extension Frontend 模块发送来的调试请求。
+Debug Adapter 是一个独立的进程，负责协调在线 IDE 和 GDB。在 GDB 准备就绪后，Debug Adapter 进程会启动，
+并开始监听在线 IDE 中 Extension Frontend 模块发送来的各种调试请求。
 
-一旦 Debug Adapter 接收到一个请求，它就会将请求（Debug Adapter Requests）转换为符合 GDB/MI 接口规范
-的文本并发送给 GDB。GDB 在解析、执行完 Debug Adapter 发来的信息后，返回符合 GDB/MI 规范的文本信息
-。Debug Adapter 将这些信息解析后，向 Extension Frontend 返回 Responds。此外，调试过程中发生的特权级
-切换、断点触发等事件也会通过 Event 类型的消息返回给 Extension Frontend。
+如下图所示，一旦 Debug Adapter 接收到一个请求，它就会将请求（Debug Adapter Requests）转换为符合 GDB/MI 接口规范
+（GDB/MI 是一个基于行的面向机器的 GDB 文本接口，它专门用于支持将调试器用作大型系统的一个小组件的系
+统的开发。[2]）的文本并发送给 GDB。GDB 在解析、执行完 Debug Adapter 发来的命令后，返回符合 GDB/MI 规范
+的文本信息。Debug Adapter 将 GDB 返回的信息解析后，向 Extension Frontend 返回 Debug Adapter
+Protocol 协议的 Respond 消息[]。此外，调试过程中发生的特权级切换、断点触发等事件会通过 Debug Adapter
+Protocol 协议的 Event 消息发送给 Extension Frontend。
 
-![Debug Adapter](./imgs/Debug-Adapter-Drawio.png) 我们编写了一个插件。这个插件可以在云端也可以在本地
-运行。目前为了调试的方便，我们基本上在本地运行。
+![Debug Adapter](./imgs/Debug-Adapter-Drawio.png)
 
 ### 2.3 IDE on Web Browser
 
