@@ -212,7 +212,26 @@ Protocol 协议的 Event 消息发送给 Extension Frontend。
 
 ### 4.2 eBPF server 的实现
 
-我们实现的总体思路是，让一个GDB同时连接gdbserver和eBPF server. 二者都采用
+我们跟踪的目标（target）是同一个，但是通过两种跟踪技术同时跟踪。我们把会改变操作系统状态的那个跟踪技
+术（Qemu 的 gdbserver 或 OpenOCD）称为 main-stub，eBPF 的 GDBServer 称为 side-stub。 Main-stub 负责
+控制，而 side-stub 只负责收集信息，不能影响内核的状态。
+
+eBPF 程序具有隔离性，不应该改变操作系统的运行状态。因此，eBPF Server 只有强的动态跟踪能力而没有控制被调试
+的操作系统的能力。控制功能只能通过 Qemu 虚拟机提供的 gdbserver 来实施。
+
+我们的整体构想是，让一个GDB同时连接 gdbserver 和 eBPF server。gdbserver 和eBPF server 同时跟踪同一个目标（target），
+即虚拟机中运行的rCore-Tutorial-v3 操作系统。gdbserver提供 
+
+
+因此首先要解决的问题是如何让 GDB 和 eBPF server 通信。
+
+#### 基于串口的
+
+
+
+#### 实现RSP协议
+
+ 二者都采用
 
 gdbserver 协议与 eBPF server 的不同
 
@@ -222,8 +241,7 @@ gdbserver 是一个通用的调试服务器协议，它提供了一种同步的�
 
 rsp 异步
 
-eBPF的gdbserver只有强的动态跟踪能力；
-控制只能通过QEMU的gdbserver来实施；
+
 
 eBPF依赖的内核模块是不能自己调试的；
 eBPF的调试依赖内核的两个串口；
@@ -253,9 +271,7 @@ te护串口的内存区域。其次，我们可以利用基于中断的串口消
 
 ### VScode 同时连接被跟踪操作系统的 OpenOCD 和 eBPF 的实施方案
 
-我们跟踪的目标（target）是同一个，但是通过两种跟踪技术同时跟踪。我们把会改变操作系统状态的那个跟踪技
-术（Qemu 的 gdbserver 或 OpenOCD）称为 main-stub，eBPF 的 GDBServer 称为 side-stub。 Main-stub 负责
-控制，而 side-stub 只负责收集信息，不能影响内核的状态。
+
 
 在使用流程上，二者的区别在于，ebpf server 要提前指定要做的事。具体如下：
 
@@ -294,8 +310,6 @@ side-stub break 0x8020xxxx then-get register-info
 side-stub arguments <function-name>
 ```
 
-此外还要琢磨一个事，编译的时候，符号信息应该单独提取出来，提供给 gdb，由 gdb 做符号解析，看看能否做
-到不用修改内核编译参数。
 
 控制相关的功能有：
 
