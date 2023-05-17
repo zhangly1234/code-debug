@@ -142,17 +142,9 @@ Protocol 协议的 Event 消息发送给 Extension Frontend。
 
 ### 2.3 网页端部分
 
-#### 2.3.1 Extension Frontend
-
-在线IDE
-Extension Frontend 在用户浏览器中运行，和服务器上的 Debug Adapter 通信。它监听 Debug Adapter 的各种
-事件（如收到消息、发送消息）并发送 Requests，相应 Responses 和 Events。Extension Frontend 会解析接收到的 Responds 和
-Events 并将需要的信息转发至 Debug UI。如果 Debug UI 向 Extension Frontend 传递了某个消息，Extension
-Frontend 也会将这个消息转换为 Requests 发送给 Debug Adapter。
-
-#### 2.3.2 Debug UI
-
-TODO
+在用户浏览器上运行的在线 IDE 中，一个被称作 Extension Frontend 的模块负责和和服务器上的 Debug Adapter 通信。
+它监听 Debug Adapter 的各种事件（如收到消息、发送消息）并做出反馈，如更新用户界面、根据用户请求发送 Requests、
+响应 Responses 和 Events等。
 
 ### 2.4 内核态用户态的断点冲突
 
@@ -205,7 +197,7 @@ TODO
 在得到当前所在的特权级后，Debug Adapter 向 Extension Frontend 返回 Responses。Extension Frontend 接
 收并解析 Responses 和 Events，将信息传递到 Debug UI。Debug UI 收到信息后更新界面。
 
-### 第四章 基于 eBPF 技术的跟踪调试
+## 第三章 基于 eBPF 技术的跟踪调试
 
 由于 GDB 对 rust 语言支持的局限性，以下语言元素暂不支持查看： TODO 因此，我们希望利用 eBPF 技术，和
 qemu 的 gdbserver 的静态分析互补。支持查看这些语言元素，从而可以展示更多内核信息。
@@ -232,21 +224,7 @@ eBPF依赖的内核模块是不能自己调试的；
 eBPF的调试依赖内核的两个串口；
 
 实现：移植，升级，系统调用，helpers，对eBPF以外的符号信息的依赖；
-
-RsP协议简介
-
-### 4.3 使用 gdb 的 Python 扩展
-
-为了提高调试的灵活性和效率，我们可以使用 gdb 的 Python 扩展。这个扩展允许我们使用 Python 语言来编写
-自定义的调试命令和脚本。为了使用这个扩展，我们需要重新编译 gdb。
-
-我们可以使用 Python 脚本来编写一些自定义的调试命令和行为。这些脚本通常运行在一个单独的线程中，以不阻
-塞主调试会话。我们可以使用 Python 的强大功能和易用性来编写复杂的调试逻辑和处理程序。
-
-### 4.4 QEMU 对新串口的支持
-
-为了实现更好的设备模拟，我们可以使用 QEMU 来支持新的串口。有两个主要的原因让我们选择使用第二个串口。
-首先，我们可以使用物理内存保护（PMP）来保护串口的内存区域。其次，我们可以利用基于中断的串口消息收发
+te护串口的内存区域。其次，我们可以利用基于中断的串口消息收发
 机制来提高效率。由于这个机制的存在，消息不能返回 server，而是直接由 eBPF 程序返回。此外，我们还可以
 利用 QEMU 的 virtio 设备模型来模拟虚拟串口，以提供更高的性能和灵活性。
 
