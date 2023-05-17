@@ -73,7 +73,7 @@ Text Editor 也可以向 Extension Frontend 发送消息，比如断点更新消
 
 接下来我们分服务器和网页端两个部分介绍这套远程调试工具。
 
-### 2.2 Server Side
+### 2.2 服务器部分
 
 #### 2.2.1 在线 VSCode
 
@@ -140,12 +140,13 @@ Protocol 协议的 Event 消息发送给 Extension Frontend。
 
 ![Debug Adapter](./imgs/Debug-Adapter-Drawio.png)
 
-### 2.3 IDE on Web Browser
+### 2.3 网页端部分
 
 #### 2.3.1 Extension Frontend
 
-Extension Frontend 在用户浏览器端运行，和服务器上的 Debug Adapter 通信。它监听 Debug Adapter 接收和
-发出的消息并发送 Requests，相应 Responses 和 Events。Extension Frontend 会解析接收到的 Responds 和
+在线IDE
+Extension Frontend 在用户浏览器中运行，和服务器上的 Debug Adapter 通信。它监听 Debug Adapter 的各种
+事件（如收到消息、发送消息）并发送 Requests，相应 Responses 和 Events。Extension Frontend 会解析接收到的 Responds 和
 Events 并将需要的信息转发至 Debug UI。如果 Debug UI 向 Extension Frontend 传递了某个消息，Extension
 Frontend 也会将这个消息转换为 Requests 发送给 Debug Adapter。
 
