@@ -208,26 +208,43 @@ Protocol 协议的 Event 消息发送给 Extension Frontend。
 扩展伯克利包过滤器（extened Berkeley Packet Filter，简称 eBPF）是一个允许在内核里安全地执行不
 受信任的用户定义插件的子系统。它依赖于静态分析来保护内核免受有漏洞的、恶意的插件的破坏。 eBPF 程序
 可以满足各种复杂的监控需求。通过使用 kprobe，eBPF 程序能够在内核空间中动态地收集各种类型的信息，然后将这
-些信息存储在 eBPF maps 中。除了高效、可移植性好、灵活，eBPF程序的另一优势在于其不干扰操作系统的运行状态。
+些信息存储在 eBPF maps 中。
+
+eBPF 程序具有隔离性，不干扰操作系统的运行状态。因此，用eBPF程序编写的 eBPF Server 只有强的动态跟踪能力
+而没有控制被调试的操作系统的能力。控制功能只能通过 Qemu 虚拟机提供的 gdbserver 来实施。
 
 ### 4.2 eBPF server 的实现
 
-我们跟踪的目标（target）是同一个，但是通过两种跟踪技术同时跟踪。我们把会改变操作系统状态的那个跟踪技
-术（Qemu 的 gdbserver 或 OpenOCD）称为 main-stub，eBPF 的 GDBServer 称为 side-stub。 Main-stub 负责
-控制，而 side-stub 只负责收集信息，不能影响内核的状态。
+我们的整体构想是，运用两种跟踪技术，即 gdbserver 和 eBPF server ，同时跟踪同一个目标（target），
+即虚拟机中运行的rCore-Tutorial-v3 操作系统。我们把会改变操作系统状态的那个跟踪技
+术（Qemu 的 gdbserver 或 OpenOCD ）称为 main-stub，eBPF 的 GDBServer 称为 side-stub。
+Main-stub 具有可以改变操作系统运行状态的控制能力，而 side-stub 只负责收集信息，不影响内核的状态。
 
-eBPF 程序具有隔离性，不应该改变操作系统的运行状态。因此，eBPF Server 只有强的动态跟踪能力而没有控制被调试
-的操作系统的能力。控制功能只能通过 Qemu 虚拟机提供的 gdbserver 来实施。
+如第二章所述，利用 GDB 自带的远程调试功能和 Qemu 自带的 gdbstub 功能，我们很容易就能建立 main-stub 和 GDB 的连接。
+因此，接下来要解决的问题就是如何让 GDB 在连接到 main-stub 的同时也连接到 side-stub，即我们编写的 eBPF server。
 
-我们的整体构想是，让一个GDB同时连接 gdbserver 和 eBPF server。gdbserver 和eBPF server 同时跟踪同一个目标（target），
-即虚拟机中运行的rCore-Tutorial-v3 操作系统。gdbserver提供 
+GDB 和 main-stub 用 TCP 协议通信，但是由于主线版本的 rCore-Tutorial-v3 暂未提供稳定的网络协议栈和网卡驱动
+支持（不论是真实网卡还是 Qemu 虚拟机的 virtio 虚拟设备）而 eBPF server 是运行在操作系统里的，因此若要让 eBPF
+ server 用TCP协议连接到 GDB ，实现难度比较大。我们在调研了各种调试器与调试器服务器通信的方案后，选择了用串口
+进行二者的通信。
 
+#### 4.2.1 基于串口的 GDB 与 eBPF server 的通信机制
 
-因此首先要解决的问题是如何让 GDB 和 eBPF server 通信。
+由于 rCore-Tutorial-v3 的终端已经占用了一个串口用于文字输入输出，为了不影响操作系统的运行状态，eBPF Server 需要用另一个专属的
+串口来和 GDB 通信。关于给虚拟机添加更多串口，大部分网上的资料仅提到添加一个 Qemu 启动参数，但是经过实际测试后发现这不起作用。原因是
+Qemu 虚拟机并未支持 Risc-v 平台的多串口收发。因此，我们修改了 Qemu 虚拟机的源代码，为新串口分配了 MMIO 地址和 IRQ（中断号），还
+修改了设备树初始化函数。我们发现运行在修改后的 Qemu 中的 rCore-Tutorial-v3 操作系统可以给第二个串口发送消息，但不能接收基于中断
+机制的第二个串口的消息。这是因为在 RISC-V 中，存在用于保护物理地址的寄存器 pmpcfg 和 pmpaddr[引用risc-v文档]。而 rCore-Tutorial-v3
+ 的 SBI（rustsbi-qemu）通过设置这两个寄存器的值，使得只有 SBI 部分和 OS 所在的地址空间可以使用，而PLIC、串口等设备所在的物理地
+址不可以使用。为了调试方便，我们修改了SBI对 pmpcfg 和 pmpaddr 的设置，使得所有物理地址都可以被使用。
 
-#### 基于串口的
+同时，为了支持第二个串口的通信，我们参考原有的串口相关的代码，对 rCore-Tutorial-v3 做了尽可能少的修改，修改内容包括：添加串口初始化
+例程、修改中断处理例程、添加用于在第二个串口收发单子节的系统调用和 eBPF 帮助函数（helper functions）。
 
+至此，我们实现了基于中断的多串口数据收发。需要注意的是，由于 eBPF 的调试依赖内核的两个串口；eBPF 依赖的内核模块是不能自己调试的；
 
+当然，这就导致eBPF不能跟踪第二个串口相关的通信，因为收发信息也用了第二个串口，会陷入死循环。不过这也无所谓，反正调试器
+不能调试它本身。
 
 #### 实现RSP协议
 
@@ -243,15 +260,12 @@ rsp 异步
 
 
 
-eBPF依赖的内核模块是不能自己调试的；
-eBPF的调试依赖内核的两个串口；
+
 
 实现：移植，升级，系统调用，helpers，对eBPF以外的符号信息的依赖；
 te护串口的内存区域。其次，我们可以利用基于中断的串口消息收发
 机制来提高效率。由于这个机制的存在，消息不能返回 server，而是直接由 eBPF 程序返回。此外，我们还可以
 利用 QEMU 的 virtio 设备模型来模拟虚拟串口，以提供更高的性能和灵活性。
-
-根据赵方亮学长给的链接找到了线索，修改了sbi的pmp设置，实现了基于中断的多串口数据收发，可以正常收发字符串。
 
 基于中断的串口消息收发原理
 
@@ -324,6 +338,8 @@ side-stub arguments <function-name>
 - 查看寄存器
 - 查看内存
 
+
+python编译
 
 ### 4.5 在VSCode结合gdbserver和eBPF
 
