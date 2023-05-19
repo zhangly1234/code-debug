@@ -260,7 +260,7 @@ Qemu 虚拟机并未支持 Risc-v 平台的多串口收发。因此，我们修�
  本身来调试的。比如，eBPF Server 依赖内核的串口，如果我们试图让 eBPF server 跟踪这个串口的行为，那么 eBPF Server 收集的数据也会通过
 这个串口来发送，这又会触发 eBPF Server 的跟踪，进而陷入死循环。
 
-#### 4.2.2 实现 RSP 协议
+#### 4.2.2 在 GDB 和 eBPF Server 之间实现 RSP 协议
 
 在串口或网络之上，GDB 和 main-stub 之间用 RSP 高层协议进行通信。RSP协议规定的基本消息单位是由ASCII字符组成的数据包（packet），数据包的
 格式如下所示：
@@ -304,7 +304,7 @@ GDB 允许在不修改源代码的情况下支持 python 语言编写的扩展�
 一个典型的RSP如下图所示：
 图片
 
-#### 4.2.3 在在线 IDE 中适配 eBPF Server
+#### 4.2.3 在 Debug Adapter 中适配 eBPF Server
 
 至此，GDB可以同时连接到 gdbserver 和 eBPF Server. 在 GDB 的层面上，和 eBPF Server 的所有交互都是通过 side-stub 命令进行的。这个命令
 的规范如下：
@@ -326,20 +326,32 @@ GDB 允许在不修改源代码的情况下支持 python 语言编写的扩展�
 -side-stub arguments <function-name>
 ```
 
-要在在线IDE中适配eBPF Server，只需要适配这几个命令即可。目前，我们已经适配了前两个命令。需要注意的是，在使用流程上，
+接下来要在 Debug Adapter 中适配 eBPF Server。从 Debug Adapter 的角度来说，适配的工作主要分两部分，第一个部分是修改
+用于判断 GDB/MI 消息类别的正则表达式，使得 GDB 传来的 GDB/MI 消息能被正确地处理；第二个部分是，如果在线 IDE 请求执行一些
+和 eBPF Server 有关的行为，需要将这些行为翻译成对应的 GDB 命令并发送给 GDB。目前，我们已经适配了前两个命令。
+
+#### 4.2.4 在在线 IDE 中适配 eBPF Server
+ 
+在线 IDE 对 eBPF Server 的适配工作
+
+需要注意的是，在使用流程上，Event，检查其是否和它们有关；如果用户通过在线IDE的界面请求执行某些功能（比如设置断点），那么
 ，gdbserver 和 eBPF Server 的区别在于，ebpf server 要提前指定好插桩触发后应执行的行为。具体如下：
 
 gdbserver 的使用流程：
 
-1. 用户在在线 IDE 中设置断点
-1. **断点触发，操作系统暂停运行**
-1. GDB 等待 Debug Adapter 传来的用户的指令，并据此执行信息收集，控制操作系统等行为
+1. 用户在在线 IDE 中设置断点。
+1. **断点触发，操作系统暂停运行**。
+1. GDB 等待 Debug Adapter 传来的用户的指令，并据此执行信息收集，控制操作系统等行为。
 
 eBPF Server 的流程：
 
 1. 用户设置断点并，**提前指定断点触发后的操作**。
-1. 操作系统中的 eBPF 模块注册相关的 ebpf 程序
-1. 断点触发，eBPF 程序执行这些操作，返回信息，os 继续运行。操作系统的状态和 eBPF 程序触发之前保持一致
+1. 操作系统中的 eBPF 模块注册相关的 ebpf 程序。
+1. 断点触发，eBPF 程序执行这些操作，返回信息，os 继续运行。操作系统的状态和 eBPF 程序触发之前保持一致。
+
+
+
+
 
 ### 4.3 案例：系统调用跟踪及系统调用参数的获取
 
