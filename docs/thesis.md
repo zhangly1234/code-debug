@@ -146,7 +146,9 @@ Protocol 协议的 Event 消息发送给 Extension Frontend。
 它监听 Debug Adapter 的各种事件（如收到消息、发送消息）并做出反馈，如更新用户界面、根据用户请求发送 Requests、
 响应 Responses 和 Events等。
 
-#### debug UI WebView
+#### debug UI 
+
+#### WebView
 
 ### 2.4 内核态用户态的断点冲突
 
