@@ -18,13 +18,15 @@ rCore-Tutorial-v3 是一个基于 RISC-V 平台的、由 Rust 语言编写的类
 
 市面上的现有产品，例如 Github Codespaces[114514], 由于没有开放源代码，使用、部署的限制比较大。它可以利用 Qemu 虚拟机的 gdbstub[]特性支持基于 gdb 的调试，但只能使用文本终端，翻阅代码很不方便，对于初学者来说有较大学习成本。而且它不具备和操作系统开发密切相关的调试跟踪功能。
 
-### 1.2 相关工作
+### 1.2 相关技术介绍
 
 #### 1.2.1 基于 Visual Studio Code 的在线调试方案
 
 近年来，具有高度的可定制性的轻量级集成开发环境，如 Sublime Text、Atom 和 Visual Studio Code，已经迅速普及。然而，轻量级 IDE 对操作系统在线调试的支持非常有限。在线调试的优势是,对本地计算机性能要求不高，无需在本地配置开发环境，便于分享协作，可以构建高效的程序开发教学平台。
 
 鉴于轻量级集成开发环境的日益普及，以及我们对操作系统在线调试支持的局限性的观察，我们基于Visual Studio Code（最流行和最广泛使用的轻量级IDE之一）设计和实现了一个操作系统在线开发、调试环境。
+
+#### 
 
 ## 第二章 调试工具设计与实现
 
@@ -190,25 +192,42 @@ GDB 允许在不修改源代码的情况下支持 python 语言编写的扩展�
 
 至此，GDB可以同时连接到 gdbserver 和 eBPF Server. 在 GDB 的层面上，和 eBPF Server 的所有交互都是通过 side-stub 命令进行的。这个命令的规范如下：
 
-```// 连接到ebpf server的串口.// python脚本负责向串口发送信息.// python脚本接收到的信息会返回给gdb.-side-stub target remote /dev/tty1```
+```
+// 连接到ebpf server的串口.
+// python脚本负责向串口发送信息.
+// python脚本接收到的信息会返回给gdb.
+-side-stub target remote /dev/tty1
+```
 
-```// 在某地址设置断点，然后收集寄存器信息-side-stub break 0x8020xxxx then-get register-info```
+```
+// 在某地址设置断点，然后收集寄存器信息
+-side-stub break 0x8020xxxx then-get register-info
+```
 
-```// 收集函数参数-side-stub arguments <function-name>```
+```
+// 收集函数参数
+-side-stub arguments <function-name>
+```
 
 接下来要在 Debug Adapter 中适配 eBPF Server。从 Debug Adapter 的角度来说，适配的工作主要分两部分，第一个部分是修改用于判断 GDB/MI 消息类别的正则表达式，使得 GDB 传来的 GDB/MI 消息能被正确地处理；第二个部分是，如果在线 IDE 请求执行一些和 eBPF Server 有关的行为，需要将这些行为翻译成对应的 GDB/MI 消息并发送给 GDB。目前，我们已经适配了前两个命令。
 
-#### 4.2.4 在在线 IDE 中适配 eBPF Server 与 Debug Adapter 类似，在线 IDE 对 eBPF Server 的适配工作也分两部分：第一个部分是添加和 eBPF Server 有关的用户界面（包含 Debug UI 和 WebView）并将用户界面的相关事件绑定到 Debug Adapter Request 的发送函数上；第二个部分是将 Debug Adapter 传来的 Events 和 Responses 信息进行解析并将这些信息更新到对应的用户界面元素上。
+#### 4.2.4 在在线 IDE 中适配 eBPF Server 
+
+与 Debug Adapter 类似，在线 IDE 对 eBPF Server 的适配工作也分两部分：第一个部分是添加和 eBPF Server 有关的用户界面（包含 Debug UI 和 WebView）并将用户界面的相关事件绑定到 Debug Adapter Request 的发送函数上；第二个部分是将 Debug Adapter 传来的 Events 和 Responses 信息进行解析并将这些信息更新到对应的用户界面元素上。
 
 需要注意的是，在用户的使用流程上，gdbserver 和 eBPF Server 的区别在于，ebpf server 要提前指定好插桩触发后应执行的行为。二者的使用流程具体如下：
 
 gdbserver 的使用流程：
 
-1. 用户在在线 IDE 中设置断点。1. **断点触发，操作系统暂停运行**。1. GDB 等待 Debug Adapter 传来的用户的指令，并据此执行信息收集，控制操作系统等行为。
+1. 用户在在线 IDE 中设置断点。
+1. **断点触发，操作系统暂停运行**。
+1. GDB 等待 Debug Adapter 传来的用户的指令，并据此执行信息收集，控制操作系统等行为。
 
 eBPF Server 的流程：
 
-1. 用户在在线 IDE 中设置断点并**提前指定断点触发后的操作**。1. 操作系统中的 eBPF 模块注册相关的 ebpf 程序。1. 断点触发，eBPF 程序执行这些操作，返回信息，os 继续运行。操作系统的状态和 eBPF 程序触发之前保持一致。
+1. 用户在在线 IDE 中设置断点并**提前指定断点触发后的操作**。
+1. 操作系统中的 eBPF 模块注册相关的 ebpf 程序。
+1. 断点触发，eBPF 程序执行这些操作，返回信息，os 继续运行。操作系统的状态和 eBPF 程序触发之前保持一致。
 
 ### 4.3 案例：系统调用跟踪及系统调用参数的获取
 
@@ -233,7 +252,12 @@ eBPF 程序可以用多种语言编写，在这里我们选用 C 语言。eBPF �
 
 本项目的主要工作是在 VSCode 编辑器的已有的用于跟踪用户态程序的 debugger 插件基础上，扩展对 Rust 语言和操作系统内核特征的源代码级跟踪分析能力。实现的功能主要包括：
 
-1. 关键的寄存器和内存的数据获取；2. 内核态与用户态方便的切换跟踪3. 当前特权级信息的准确获取；4. 自动更换符号表文件；5. 支持基于 eBPF 的单步断点、内存查看、寄存器查看功能6. 对被跟踪内核运行环境的适配：QEMU
+1. 关键的寄存器和内存的数据获取；
+2. 内核态与用户态方便的切换跟踪
+3. 当前特权级信息的准确获取；
+4. 自动更换符号表文件；
+5. 支持基于 eBPF 的单步断点、内存查看、寄存器查看功能
+6. 对被跟踪内核运行环境的适配：QEMU
 
 通过结合使用 eBPF Server 和 gdbserver，我们构建了一个高效、灵活且功能强大的操作系统调试跟踪平台。
 
@@ -241,7 +265,11 @@ eBPF 程序可以用多种语言编写，在这里我们选用 C 语言。eBPF �
 
 在现有工作的基础上，我们的调试工具还可以进行下列改进：
 
-1. 信息获取能力增强（uprobe）2. 异步函数跟踪3. 断点和插桩自动选择4. 基于真实系统(FPGA 或 RISC-V 开发板)的远程实验与调试系统5. 展示火焰图
+1. 信息获取能力增强（uprobe）
+2. 异步函数跟踪
+3. 断点和插桩自动选择
+4. 基于真实系统(FPGA 或 RISC-V 开发板)的远程实验与调试系统
+5. 展示火焰图
 
 ## 参考文献
 
