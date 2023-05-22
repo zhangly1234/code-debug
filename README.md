@@ -262,9 +262,11 @@ VSCode 其实提供了几个重要的原生 request 接口，如 variablesReques
 				//清空该文件的断点
 				const path = args.source.path;
 				const spaceName = this.addressSpaces.pathToSpaceName(path);
-				//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），暂时不通知GDB设置断点
+				//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的
+				//断点），暂时不通知GDB设置断点。
 				//如果这个断点是当前地址空间，或者是内核入口断点，那么就通知GDB立即设置断点
-				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path==="src/trap/mod.rs" && args.breakpoints[0].line===30)
+				if ((spaceName === this.addressSpaces.getCurrentSpaceName())
+				|| (path==="src/trap/mod.rs" && args.breakpoints[0].line===30)
 				) {
 					// TODO rules can be set by user
 					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);
