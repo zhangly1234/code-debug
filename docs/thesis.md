@@ -1,4 +1,4 @@
-# 面向 rCore-Tutorial 操作系统的调试工具
+# 面向 rCore-Tutorial 操作系统的调试工具（草稿）
 
 ## 摘要
 
