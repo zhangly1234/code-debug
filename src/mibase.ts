@@ -38,6 +38,11 @@ import { strict } from "assert";
 import { debugPort } from "process";
 import { RISCV_REG_NAMES } from "./frontend/consts";
 
+const config = vscode.workspace.getConfiguration('launch', vscode.workspace.workspaceFolders[0].uri);
+let KERNEL_IN_BREAKPOINTS_LINE=config.get("KERNEL_IN_BREAKPOINTS_LINE");
+let KERNEL_OUT_BREAKPOINTS_LINE=config.get("KERNEL_OUT_BREAKPOINTS_LINE");
+let GO_TO_KERNEL_LINE=config.get("GO_TO_KERNEL_LINE");
+
 class ExtendedVariable {
 	constructor(public name, public options) {}
 }
@@ -340,7 +345,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
 			if (
 				info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" &&
-				info.outOfBandRecord[0].output[3][1][5][1] === "135"
+				info.outOfBandRecord[0].output[3][1][5][1] === KERNEL_OUT_BREAKPOINTS_LINE+""
 			) {
 				this.sendEvent({ event: "kernelToUserBorder" } as DebugProtocol.Event);
 			}
@@ -493,7 +498,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				const spaceName = this.addressSpaces.pathToSpaceName(path);
 				//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），暂时不通知GDB设置断点
 				//如果这个断点是当前地址空间，或者是内核入口断点，那么就通知GDB立即设置断点
-				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path === "src/trap/mod.rs" && args.breakpoints[0].line === 30)
+				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path === "src/trap/mod.rs" && args.breakpoints[0].line === GO_TO_KERNEL_LINE)
 				) {
 					// TODO rules can be set by user
 					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);				}
@@ -1250,7 +1255,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					response as DebugProtocol.SetBreakpointsResponse,
 					{
 						source: { path: "src/trap/mod.rs" } as DebugProtocol.Source,
-						breakpoints: [{ line: 65 }] as DebugProtocol.SourceBreakpoint[],
+						breakpoints: [{ line: KERNEL_IN_BREAKPOINTS_LINE }] as DebugProtocol.SourceBreakpoint[],
 					} as DebugProtocol.SetBreakpointsArguments
 				);
 				break;
@@ -1259,7 +1264,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					response as DebugProtocol.SetBreakpointsResponse,
 					{
 						source: { path: "src/trap/mod.rs" } as DebugProtocol.Source,
-						breakpoints: [{ line: 135 }] as DebugProtocol.SourceBreakpoint[],
+						breakpoints: [{ line: KERNEL_OUT_BREAKPOINTS_LINE }] as DebugProtocol.SourceBreakpoint[],
 					} as DebugProtocol.SetBreakpointsArguments
 				);
 				break;
