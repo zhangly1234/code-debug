@@ -38,10 +38,6 @@ import { strict } from "assert";
 import { debugPort } from "process";
 import { RISCV_REG_NAMES } from "./frontend/consts";
 
-const config = vscode.workspace.getConfiguration('launch', vscode.workspace.workspaceFolders[0].uri);
-let KERNEL_IN_BREAKPOINTS_LINE=config.get("KERNEL_IN_BREAKPOINTS_LINE");
-let KERNEL_OUT_BREAKPOINTS_LINE=config.get("KERNEL_OUT_BREAKPOINTS_LINE");
-let GO_TO_KERNEL_LINE=config.get("GO_TO_KERNEL_LINE");
 
 class ExtendedVariable {
 	constructor(public name, public options) {}
@@ -227,6 +223,10 @@ export class MI2DebugSession extends DebugSession {
 	protected serverPath: string;
 	protected running: boolean = false;
 	protected addressSpaces = new AddressSpaces("kernel", this); //for rCore
+	public KERNEL_IN_BREAKPOINTS_LINE;//TODO THIS SHOULD HAVE BEEN IN gdb.ts. However Codes that uses those stuff are all in mibase.ts. :(
+	public KERNEL_OUT_BREAKPOINTS_LINE;
+	public GO_TO_KERNEL_LINE;
+
 
 	public constructor(debuggerLinesStartAt1: boolean, isServer: boolean = false) {
 		super(debuggerLinesStartAt1, isServer);
@@ -345,7 +345,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			this.sendEvent({ event: "inKernel" } as DebugProtocol.Event);
 			if (
 				info.outOfBandRecord[0].output[3][1][3][1] === "src/trap/mod.rs" &&
-				info.outOfBandRecord[0].output[3][1][5][1] === KERNEL_OUT_BREAKPOINTS_LINE+""
+				info.outOfBandRecord[0].output[3][1][5][1] === this.KERNEL_OUT_BREAKPOINTS_LINE+""
 			) {
 				this.sendEvent({ event: "kernelToUserBorder" } as DebugProtocol.Event);
 			}
@@ -498,7 +498,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				const spaceName = this.addressSpaces.pathToSpaceName(path);
 				//保存断点信息，如果这个断点不是当前空间的（比如还在内核态时就设置用户态的断点），暂时不通知GDB设置断点
 				//如果这个断点是当前地址空间，或者是内核入口断点，那么就通知GDB立即设置断点
-				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path === "src/trap/mod.rs" && args.breakpoints[0].line === GO_TO_KERNEL_LINE)
+				if ((spaceName === this.addressSpaces.getCurrentSpaceName()) || (path === "src/trap/mod.rs" && args.breakpoints[0].line === this.GO_TO_KERNEL_LINE)
 				) {
 					// TODO rules can be set by user
 					this.addressSpaces.saveBreakpointsToSpace(args, spaceName);				}
@@ -1255,7 +1255,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					response as DebugProtocol.SetBreakpointsResponse,
 					{
 						source: { path: "src/trap/mod.rs" } as DebugProtocol.Source,
-						breakpoints: [{ line: KERNEL_IN_BREAKPOINTS_LINE }] as DebugProtocol.SourceBreakpoint[],
+						breakpoints: [{ line: this.KERNEL_IN_BREAKPOINTS_LINE }] as DebugProtocol.SourceBreakpoint[],
 					} as DebugProtocol.SetBreakpointsArguments
 				);
 				break;
@@ -1264,7 +1264,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					response as DebugProtocol.SetBreakpointsResponse,
 					{
 						source: { path: "src/trap/mod.rs" } as DebugProtocol.Source,
-						breakpoints: [{ line: KERNEL_OUT_BREAKPOINTS_LINE }] as DebugProtocol.SourceBreakpoint[],
+						breakpoints: [{ line: this.KERNEL_OUT_BREAKPOINTS_LINE }] as DebugProtocol.SourceBreakpoint[],
 					} as DebugProtocol.SetBreakpointsArguments
 				);
 				break;
@@ -1296,12 +1296,16 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			// 	break;
 			case "updateCurrentSpace":
 				this.addressSpaces.updateCurrentSpace(args);
+				break;
 			case "disableCurrentSpaceBreakpoints":
 				this.addressSpaces.disableCurrentSpaceBreakpoints();
+				break;
 			case 'connect_pts':
 				this.miDebugger.sendCliCommand('-side-stub target remote '+args);
+				break;
 			case 'tracepoint_then_get_registers':
 				this.miDebugger.sendCliCommand('-side-stub tracepoint-then-get-registers '+ args);
+				break;
 			default:
 				return this.sendResponse(response);
 		}

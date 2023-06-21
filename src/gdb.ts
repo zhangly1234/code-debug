@@ -35,6 +35,9 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
 	qemuPath: string;
 	qemuArgs: string[];
 	userSpaceDebuggeeFiles: string[];
+	KERNEL_IN_BREAKPOINTS_LINE:number;
+	KERNEL_OUT_BREAKPOINTS_LINE:number;
+	GO_TO_KERNEL_LINE:number;
 }
 
 let NEXT_TERM_ID = 1;
@@ -69,7 +72,10 @@ export class GDBDebugSession extends MI2DebugSession {
 			);
 			return;
 		}
-
+		this.KERNEL_IN_BREAKPOINTS_LINE=args.KERNEL_IN_BREAKPOINTS_LINE;
+		this.KERNEL_OUT_BREAKPOINTS_LINE=args.KERNEL_OUT_BREAKPOINTS_LINE;
+		this.GO_TO_KERNEL_LINE=args.GO_TO_KERNEL_LINE;
+		
 		this.runInTerminalRequest(
 			{
 				kind: "integrated",
