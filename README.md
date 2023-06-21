@@ -615,7 +615,11 @@ todos:
                    "pty",
                    "-s",
                    "-S"
-               ]
+               ],
+
+            "KERNEL_IN_BREAKPOINTS_LINE":65, // src/trap/mod.rs中内核入口行号。可能要修改
+            "KERNEL_OUT_BREAKPOINTS_LINE":135, // src/trap/mod.rs中内核出口行号。可能要修改
+            "GO_TO_KERNEL_LINE":30, // src/trap/mod.rs中，用于从用户态返回内核的断点行号。在rCore-Tutorial-v3中，这是set_user_trap_entry函数中的stvec::write(TRAMPOLINE as usize, TrapMode::Direct);语句。
            },
        ]
    }
