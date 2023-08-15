@@ -1300,12 +1300,11 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			case "disableCurrentSpaceBreakpoints":
 				this.addressSpaces.disableCurrentSpaceBreakpoints();
 				break;
-			case 'connect_pts':
-				this.miDebugger.sendCliCommand('-side-stub target remote '+args);
+			case 'send_gdb_cli_command':
+				this.miDebugger.sendCliCommand(args);
 				break;
-			case 'tracepoint_then_get_registers':
-				this.miDebugger.sendCliCommand('-side-stub tracepoint-then-get-registers '+ args);
-				break;
+			case 'send_gdb_mi_command':
+				this.miDebugger.sendCommand(args);
 			default:
 				return this.sendResponse(response);
 		}

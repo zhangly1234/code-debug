@@ -478,7 +478,7 @@ todos:
    sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev \
                  gawk build-essential bison flex texinfo gperf libtool patchutils bc \
                  zlib1g-dev libexpat-dev pkg-config  libglib2.0-dev libpixman-1-dev libsdl2-dev \
-                 git tmux python3 python3-pip ninja-build
+                 git tmux python3 python3-pip ninja-build coreutils xautomation xdotool
    # 下载源码包
    # 如果下载速度过慢可以使用我们提供的百度网盘链接：https://pan.baidu.com/s/1dykndFzY73nqkPL2QXs32Q
    # 提取码：jimc
@@ -558,6 +558,7 @@ todos:
 
 1. 下载rCore-Tutorial-v3，需要修改rCore-Tutorial-v3的源码和编译参数，下载[这个仓库](https://github.com/chenzhiy2001/rCore-Tutorial-v3)修改过的rCore-Tutorial-v3，建议下载到home目录，下载之后跑一遍rCore-Tutorial-v3。
 
+
 1. clone 本仓库，建议clone到home目录
 
 1. 在仓库目录下运行 npm install 命令
@@ -625,7 +626,13 @@ todos:
    }
    ```
 
-   
+1. （可选）如果你要用eBPF Panel，需要在rCore-Tutorial-v3的根目录下添加一个脚本：
+
+```shell
+tty > ./qemu_tty
+qemu-system-riscv64 "$@" | tee ./code_debug_qemu_output_history.txt
+```
+将这个脚本命名为`qemu-system-riscv64-with-logs.sh`，添加可执行权限（`chmod +x qemu-system-riscv64-with-logs.sh`），然后将刚才launch.json中的`"qemuPath": "qemu-system-riscv64"`改为`"qemuPath": "${workspaceRoot}/qemu-system-riscv64-with-logs.sh"`.
 
 ### 使用
 
