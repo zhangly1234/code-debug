@@ -11,67 +11,50 @@
 - 展示文档
 	- 2023.08.15 [决赛项目文档](./最终报告.pdf)
 	- 2023.08.16 [决赛演示视频]
-	- 2023.03.25  [OSATC会议分享PPT](./docs/陈志扬-OSATC-20230325-1807.pdf)
+	- 2023.03.25 [OSATC会议分享PPT](./docs/陈志扬-OSATC-20230325-1807.pdf)
+	- 2023.06.17 [2023年操作系统比赛第13场报告会 PPT](./docs/2023-oscomp-share-13.pdf)
+
 - 开发过程中积累的文档
 
 | 文档链接                                                     | 文档内容 |
 | ------------------------------------------------------------ | -------- |
-| [2023-01-02-rcore-Tutorial-ebpf 复现文档.md](./docs/2023-01-02-rcore-Tutorial-ebpf 复现文档.md) |          |
-| [2023-07-07-修正文档.pdf](./docs/2023-07-07-修正文档.pdf)    |          |
-| [2023-07-09.md](./docs/2023-07-09.md)                        |          |
+| [port-to-hardware.md](./docs/port-to-hardware.md)            | 支持硬件调试的思路                                                             |
+| [arch-eBPF-thoughts.md](./docs/arch-eBPF-thoughts.md)        |  动态调试方案的构思                                       |
+| [Github Readme](./README-Github.md)                          | 本项目的Github主页。包含了对本项目的简单介绍、详细的安装指南、常用API使用方法介绍 |
+| [rCore-Tutorial-Code-2023S 移植文档](./docs/2023S.md)       | 将调试器适配到rCore-Tutorial-Code-2023S的指南            |
+| [2023-07-07-修正文档.pdf](./docs/2023-07-07-修正文档.pdf)    | 对调试器参数的调整         |
+| [rCore学习文档](./docs/rcore学习文档.md)                     | 团队成员对rCore-Tutorial-v3代码的讨论                        |
+| [调试器测试文档](./docs/调试器测试文档.md)                   | 团队成员将早期版本的调试器配置到新虚拟机里的过程             |
+| [进程名字的支持](./docs/pcb_name.md)                         | 给PCB中添加进程名的探索过程                                  |
+| [2023-01-02-rcore-Tutorial-ebpf复现文档.md](./docs/2023-01-02-rcore-Tutorial-ebpf复现文档.md) | 移植kprobe, eBPF过程中遇到的编译问题          |
+| [Slides-August.md](./docs/Slides-August.md)                  | PPT草稿（2022）                                                             |
+| [Slides-August.pdf](./docs/Slides-August.pdf)                | PPT草稿（2022）                                                            |
+| [Slides-July.pdf](./docs/Slides-July.pdf)                    | PPT草稿（2022）                                                       |
+| [Slides-OSATC.md](./docs/Slides-OSATC.md)                    | PPT草稿（2023 OSATC）                                                |
+| [diff-rCore-Tutorial-Code-2023S-kernel.diff](./docs/diff-rCore-Tutorial-Code-2023S-kernel.diff) | 让rCore-Tutorial-Code-2023S适配调试器所需要的内核修改                                |
+| [diff-rCore-Tutorial-Code-2023S-user.diff](./docs/diff-rCore-Tutorial-Code-2023S-user.diff) | 让rCore-Tutorial-Code-2023S适配调试器所需要的用户程序编译流程的修改                                   |
+| [ebpf vs ptrace.md](./docs/ebpf_vs_ptrace.md)                | eBPF和ptrace对比                                                             |
+| [ebpf-ui.md](./docs/ebpf-ui.md)                              |  调试界面需求文档                                                            |
+| [ebpf-update.md](./docs/ebpf-update.md)                      |  移植kprobe,ebpf模块时遇到的问题                                                            |
+| [memory-read-write.md](./docs/memory-read-write.md)          |  HexEditor的实现                                                            |
+| [mid.md](./docs/mid.md)                                      |  中期检查文档                                                     |
+| [multiple_stubs.md](./docs/multiple_stubs.md)                |  一个GDB连两个gdbserver的实施方案                                                            |
+| [new-code-debug-8-3.drawio](./docs/new-code-debug-8-3.drawio) |  本项目的框架图（需要用draw.io打开）                                       |
+| [oscomp-final.pptx](./docs/oscomp-final.pptx)                |   2022年OS比赛答辩PPT                                                           |
+| [port.md](./docs/port.md)                                    |  将调试器适配到其他OS的方法（早期版本）                                               |
+| [rCore-mod-old.diff](./docs/rCore-mod-old.diff)              |  为了适配调试器，rCore-Tutorial-v3需要做出的修改（早期版本）                                                            |
+| [rCore-mod-older.md](./docs/rCore-mod-older.md)              |  为了适配调试器，rCore-Tutorial-v3需要做出的修改（早期版本）                                                              |
+| [rCore-mod.diff](./docs/rCore-mod.diff)                      |  为了适配调试器，rCore-Tutorial-v3需要做出的修改（早期版本）                                                              |
+| [thesis-2023-july.md](./docs/thesis-2023-july.md)            |  文档提纲                                                            |
+| [thesis-outline.md](./docs/thesis-outline.md)                |  文档提纲                                                            |
+| [thesis.md](./docs/thesis.md)                                |  文档草稿                                                            |
+| [treeview.md](./docs/treeview.md)                            |  用新API实现VSCode界面                                                 |
 
 - 开发日志
 
 | 文档链接                                                     | 文档内容                                                     |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | [硬件开发文档](./docs/硬件开发文档.md)                       | 对硬件调试的尝试                                             |
-| [2023-01-02-rcore-Tutorial-ebpf 复现文档.md](./docs/2023-01-02-rcore-Tutorial-ebpf 复现文档.md) | 移植kprobe,eBPF时遇到的编译问题                              |
-| [2023-07-07-修正文档.pdf](./docs/2023-07-07-修正文档.pdf)    | 调整调试器配置参数的过程                                     |
-| [2023-07-09.md](./docs/2023-07-09.md)                        | 7月9日开发日志                                               |
-| [2023-07-12.md](./docs/2023-07-12.md)                        | 7月12日开发日志                                              |
-| [2023-07-15.md](./docs/2023-07-15.md)                        | 7月15日开发日志-解决一个闭包函数指针带来的编译错误           |
-| [2023-07-16.md](./docs/2023-07-16.md)                        | 7月16日开发日志                                              |
-| [2023-07-19.md](./docs/2023-07-19.md)                        | 7月19日开发日志-解决uprobe初始化过程中PCB借用问题            |
-| [2023-07-23.md](./docs/2023-07-23.md)                        | 7月23日开发日志-uprobe模块通过编译，但还有bug                |
-| [2023-07-24.md](./docs/2023-07-24.md)                        | 7月24日开发日志                                              |
-| [2023-07-26.md](./docs/2023-07-26.md)                        | 7月26日开发日志-编写uprobe基础设施                           |
-| [2023-07-27.md](./docs/2023-07-27.md)                        | 7月27日开发日志-解决uprobe模块内存访问bug                    |
-| [2023-07-28.md](./docs/2023-07-28.md)                        | 7月28日开发日志-解决uprobe注册过程中的bug                    |
-| [2023-07-29.md](./docs/2023-07-29.md)                        | 7月29日开发日志-解决uprobe依赖问题，编写uprobe handler，uprobe基本移植完毕。 |
-| [2023-07-30.md](./docs/2023-07-30.md)                        | 7月30日开发日志-尝试在被调试的OS里跑iPerf从而测试网络性能    |
-| [2023-07-31.md](./docs/2023-07-31.md)                        | 7月31日开发日志-尝试在被调试的OS里跑iPerf从而测试网络性能    |
-| [2023-08-01.md](./docs/2023-08-01.md)                        | 8月1日开发日志-写uprobe移植指南，继续尝试跑iPerf             |
-| [2023-08-02.md](./docs/2023-08-02.md)                        | 7月31日开发日志-尝试为 rCore-Tutorial-v3 编译iPerf           |
-| [2023-08-04.md](./docs/2023-08-04.md)                        | 8月31日开发日志                                              |
-| [2023-08-06.md](./docs/2023-08-06.md)                        |                                                              |
-| [2023-08-10.md](./docs/2023-08-10.md)                        |                                                              |
-| [2023-08-14.md](./docs/2023-08-14.md)                        |                                                              |
-| [2023-oscomp-share-13.pdf](./docs/2023-oscomp-share-13.pdf)  |                                                              |
-| [2023S.md](./docs/2023S.md)                                  |                                                              |
-| [Slides-August.md](./docs/Slides-August.md)                  |                                                              |
-| [Slides-August.pdf](./docs/Slides-August.pdf)                |                                                              |
-| [Slides-July.pdf](./docs/Slides-July.pdf)                    |                                                              |
-| [Slides-OSATC.md](./docs/Slides-OSATC.md)                    |                                                              |
-| [arch-eBPF-thoughts.md](./docs/arch-eBPF-thoughts.md)        |                                                              |
-| [diff-rCore-Tutorial-Code-2023S-kernel.diff](./docs/diff-rCore-Tutorial-Code-2023S-kernel.diff) |                                                              |
-| [diff-rCore-Tutorial-Code-2023S-user.diff](./docs/diff-rCore-Tutorial-Code-2023S-user.diff) |                                                              |
-| [ebpf vs ptrace.md](./docs/ebpf vs ptrace.md)                |                                                              |
-| [ebpf-ui.md](./docs/ebpf-ui.md)                              |                                                              |
-| [ebpf-update.md](./docs/ebpf-update.md)                      |                                                              |
-| [memory-read-write.md](./docs/memory-read-write.md)          |                                                              |
-| [mid.md](./docs/mid.md)                                      |                                                              |
-| [multiple_stubs.md](./docs/multiple_stubs.md)                |                                                              |
-| [new-code-debug-8-3.drawio](./docs/new-code-debug-8-3.drawio) |                                                              |
-| [oscomp-final.pptx](./docs/oscomp-final.pptx)                |                                                              |
-| [port-to-hardware.md](./docs/port-to-hardware.md)            |                                                              |
-| [port.md](./docs/port.md)                                    |                                                              |
-| [rCore-mod-old.diff](./docs/rCore-mod-old.diff)              |                                                              |
-| [rCore-mod-older.md](./docs/rCore-mod-older.md)              |                                                              |
-| [rCore-mod.diff](./docs/rCore-mod.diff)                      |                                                              |
-| [thesis-2023-july.md](./docs/thesis-2023-july.md)            |                                                              |
-| [thesis-outline.md](./docs/thesis-outline.md)                |                                                              |
-| [thesis.md](./docs/thesis.md)                                |                                                              |
-| [treeview.md](./docs/treeview.md)                            |                                                              |
 | [开发记录和知识库.pdf](./docs/开发记录和知识库.pdf)          | 去年的开发记录                                               |
 | [2023-02-13](./docs/2023-02-13.md)                           | 每周开发纪要                                                 |
 | [2023-02-20](./docs/2023-02-20.md)                           | 每周开发纪要                                                 |
@@ -97,10 +80,29 @@
 | [2023-07-13](./docs/2023-07-13.md)                           | 每周开发纪要                                                 |
 | [2023-07-20](./docs/2023-07-20.md)                           | 每周开发纪要                                                 |
 | [2023-07-27](./docs/2023-07-27.md)                           | 每周开发纪要                                                 |
-| [rCore学习文档](./docs/rcore学习文档.md)                     | 团队成员对rCore-Tutorial-v3代码的讨论                        |
-| [调试器测试文档](./docs/调试器测试文档.md)                   | 团队成员将早期版本的调试器配置到新虚拟机里的过程             |
-| [进程名字的支持](./docs/pcb_name.md)                         | 给PCB中添加进程名的探索过程                                  |
-| [Github Readme](./README-Github.md)                          | 本项目的Github主页。包含了对本项目的简单介绍、详细的安装指南、常用API使用方法介绍 |
+| [2023-01-02-rcore-Tutorial-ebpf复现文档.md](./docs/2023-01-02-rcore-Tutorial-ebpf复现文档.md) | 移植kprobe,eBPF时遇到的编译问题                              |
+| [2023-07-07-修正文档.pdf](./docs/2023-07-07-修正文档.pdf)    | 调整调试器配置参数的过程                                     |
+| [2023-07-09.md](./docs/2023-07-09.md)                        | 7月9日开发日志                                               |
+| [2023-07-12.md](./docs/2023-07-12.md)                        | 7月12日开发日志                                              |
+| [2023-07-15.md](./docs/2023-07-15.md)                        | 7月15日开发日志-解决一个闭包函数指针带来的编译错误           |
+| [2023-07-16.md](./docs/2023-07-16.md)                        | 7月16日开发日志                                              |
+| [2023-07-19.md](./docs/2023-07-19.md)                        | 7月19日开发日志-解决uprobe初始化过程中PCB借用问题            |
+| [2023-07-23.md](./docs/2023-07-23.md)                        | 7月23日开发日志-uprobe模块通过编译，但还有bug                |
+| [2023-07-24.md](./docs/2023-07-24.md)                        | 7月24日开发日志                                              |
+| [2023-07-26.md](./docs/2023-07-26.md)                        | 7月26日开发日志-编写uprobe基础设施                           |
+| [2023-07-27.md](./docs/2023-07-27.md)                        | 7月27日开发日志-解决uprobe模块内存访问bug                    |
+| [2023-07-28.md](./docs/2023-07-28.md)                        | 7月28日开发日志-解决uprobe注册过程中的bug                    |
+| [2023-07-29.md](./docs/2023-07-29.md)                        | 7月29日开发日志-解决uprobe依赖问题，编写uprobe handler，uprobe基本移植完毕。 |
+| [2023-07-30.md](./docs/2023-07-30.md)                        | 7月30日开发日志-尝试在被调试的OS里跑iPerf从而测试网络性能    |
+| [2023-07-31.md](./docs/2023-07-31.md)                        | 7月31日开发日志-尝试在被调试的OS里跑iPerf从而测试网络性能    |
+| [2023-08-01.md](./docs/2023-08-01.md)                        | 8月1日开发日志-写uprobe移植指南，继续尝试跑iPerf             |
+| [2023-08-02.md](./docs/2023-08-02.md)                        | 8月2日开发日志-尝试为 rCore-Tutorial-v3 编译iPerf            |
+| [2023-08-04.md](./docs/2023-08-04.md)                        | 8月4日开发日志-转移工作重心                                  |
+| [2023-08-06.md](./docs/2023-08-06.md)                        | 8月6日开发日志-尝试Debug rCore-Tutorial-v3自带的网络应用     |
+| [2023-08-10.md](./docs/2023-08-10.md)                        | 8月10日开发日志                                              |
+| [2023-08-14.md](./docs/2023-08-14.md)                        | 8月14日开发日志-解决uprobe模块最后一个bug。至此所有代码编写完毕。 |
+
+
 
 ## 项目进展
 
