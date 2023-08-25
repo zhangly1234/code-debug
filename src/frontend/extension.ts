@@ -139,18 +139,18 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//=========================================================================================
 	const kernelInOutBreakpointArgs = 1;
-	const userDebugFile = "initproc"; //可以修改为其它用户程序名，如matrix
-	const your_path_to_core = os.homedir() + "/rCore-Tutorial-v3";
+	let userDebugFile = "initproc"; //可以修改为其它用户程序名，如matrix
+	const your_path_to_core = os.homedir() + "/rCore-Tutorial-v3-eBPF/rCore-Tutorial-v3"; //tag:oscomp2023 org:/rCore-Tutorial-v3
 	//========================================================================================
 
 	const removeDebugFileCmd = vscode.commands.registerCommand("code-debug.removeDebugFile", () => {
 		// 自定义请求.customRequest函数见/src/mibase.ts
 		vscode.debug.activeDebugSession?.customRequest("removeDebugFile", {
 			debugFilepath:
-			your_path_to_core + "/user/target/riscv64gc-unknown-none-elf/release/initproc",
+			your_path_to_core + "/user/target/riscv64gc-unknown-none-elf/release/"+userDebugFile,
 		});
 		// 弹出窗口
-		vscode.window.showInformationMessage("symbol file `initproc` removed");
+		vscode.window.showInformationMessage("symbol file "+userDebugFile+" removed");
 	});
 
 	const setKernelInBreakpointsCmd = vscode.commands.registerCommand(
@@ -244,13 +244,13 @@ export function activate(context: vscode.ExtensionContext) {
 							vscode.window.showInformationMessage("will switched to " + userDebugFile + " breakpoints");
 							vscode.debug.activeDebugSession?.customRequest("addDebugFile", {
 								debugFilepath:
-									your_path_to_core +
-									"/user/target/riscv64gc-unknown-none-elf/release/" +
-									userDebugFile,
+									your_path_to_core + "/user/target/riscv64gc-unknown-none-elf/release/" +userDebugFile,
+									//tag:oscomp2023 original "/user/target/riscv64gc-unknown-none-elf/release/" +userDebugFile,
+			
 							});
 							vscode.debug.activeDebugSession?.customRequest(
-								"updateCurrentSpace",
-								"src/bin/" + userDebugFile + ".rs"
+								"updateCurrentSpace","src/bin/" + userDebugFile + ".rs"
+								//tag:oscomp2023 original:"src/bin/" + userDebugFile + ".rs"
 							);
 							// TODO@werifu: show User space
 							//vscode.debug.activeDebugSession?.customRequest("disableCurrentSpaceBreakpoints");
@@ -294,14 +294,46 @@ export function activate(context: vscode.ExtensionContext) {
 							console.log(message.body);
 						} else if (message.event === "showInformationMessage") {
 							vscode.window.showInformationMessage(message.body);
+						} else if (message.event === "printThisInConsole") {
+							console.log(message.body);
 						} else if (message.event === "showErrorMessage") {
 							vscode.window.showErrorMessage(message.body);
 						} else if (message.event === "update") {
 							vscode.window.showInformationMessage("断点信息表格已经更新");
-						} else if (message.event === "output"){
+							
+						} else if(message.event === "get_pname"){
+							console.log("get pname:"+message.body);
+							userDebugFile=message.body;
+						}else if (message.event === "newProcessNameAddr") {
+							console.log("newProcessNameAddr");
+						
+							vscode.debug.activeDebugSession?.customRequest("getStringFromAddr", message.body);
+
+
+
+							// let quotation_regex = /"(.*?)"/;
+	
+							
+							//let process_name = info[0].outOfBandRecord[0].content.match(quotation_regex)[0].toString();
+
+
+
+
+
+							
+						}
+						else if (message.event === "output"){
 							if (message.body.output.startsWith('eBPF Message: ')){//messages sent from 
 								vscode.window.showInformationMessage(message.body.output);
 							}
+							if (message.body.output.startsWith('0x')&&message.body.output.endsWith('"\n')){//new process names
+								vscode.window.showInformationMessage(message.body.output);
+								let quotation_regex = /"(.*?)"/;
+								let newProcessName=message.body.output;								;
+								userDebugFile= newProcessName.match(quotation_regex)[0].toString().slice(1, -1);
+								vscode.window.showInformationMessage("new process "+userDebugFile+" updated");
+							}
+							
 						}
 					}
 				},

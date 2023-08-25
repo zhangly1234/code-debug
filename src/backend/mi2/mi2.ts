@@ -56,6 +56,21 @@ export class MI2 extends EventEmitter implements IBackend {
 		}
 	}
 
+	getMIinfo(num: number):Array<MINode> {
+		let info=[];
+		for(let i=this.miarray.length-1;i>=0;i--)
+		{
+			if(this.miarray[i].token==num)
+			{
+				info.push(this.miarray[i]);
+				// console.log("getMIinfo:"+i+" "+this.miarray);
+				delete this.miarray[i];
+			}
+		}
+		return info;
+		//throw new Error("Method not implemented.");
+	}
+
 	load(cwd: string, target: string, procArgs: string, separateConsole: string): Thenable<any> {
 		if (!path.isAbsolute(target)) target = path.join(cwd, target);
 		return new Promise((resolve, reject) => {
@@ -255,20 +270,46 @@ export class MI2 extends EventEmitter implements IBackend {
 
 	onOutput(lines) {
 		lines = <string[]>lines.split("\n");
+		console.log("lines:"+lines);
 		lines.forEach((line) => {
+			console.log("line:"+line);
 			if (couldBeOutput(line)) {
 				if (!gdbMatch.exec(line)) this.log("stdout", line);
 			} else {
-				const parsed = parseMI(line);
-				if (this.debugOutput) this.log("log", "GDB -> App: " + JSON.stringify(parsed));
+				let parsed = parseMI(line);
+				console.log("parsed:"+JSON.stringify(parsed));
 				let handled = false;
-				if (parsed.token !== undefined) {
+				if(parsed.token !== undefined){
 					if (this.handlers[parsed.token]) {
 						this.handlers[parsed.token](parsed);
 						delete this.handlers[parsed.token];
 						handled = true;
 					}
+					this.num=this.num+1;
+					parsed.token=this.num;
 				}
+				else{
+					parsed.token=this.num+1;
+					this.miarray.push(parsed);
+					if (this.miarray.length>=100)
+					{
+						this.miarray.splice(0,90);
+						const rest=this.miarray.splice(89);
+						this.miarray=rest;
+					}
+				}				
+				if (this.debugOutput)
+				{
+					this.log("log", "GDB -> App: " + JSON.stringify(parsed));
+					console.log("onoutput:"+JSON.stringify(parsed));
+				}
+				// if (parsed.token !== undefined) {
+				// 	if (this.handlers[parsed.token]) {
+				// 		this.handlers[parsed.token](parsed);
+				// 		delete this.handlers[parsed.token];
+				// 		handled = true;
+				// 	}
+				// }
 				if (!handled && parsed.resultRecords && parsed.resultRecords.resultClass == "error") {
 					this.log("stderr", parsed.result("msg") || line);
 				}
@@ -844,4 +885,6 @@ export class MI2 extends EventEmitter implements IBackend {
 	protected errbuf: string;
 	protected process: ChildProcess.ChildProcess;
 	protected stream;
+	protected miarray:MINode[]=[];//存放原来没有token的信息
+	protected num: number = 0;
 }

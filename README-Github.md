@@ -634,6 +634,17 @@ qemu-system-riscv64 "$@" | tee ./code_debug_qemu_output_history.txt
 ```
 将这个脚本命名为`qemu-system-riscv64-with-logs.sh`，添加可执行权限（`chmod +x qemu-system-riscv64-with-logs.sh`），然后将刚才launch.json中的`"qemuPath": "qemu-system-riscv64"`改为`"qemuPath": "${workspaceRoot}/qemu-system-riscv64-with-logs.sh"`.
 
+1. （可选）如果你要用rust-gdb，先保证你的GDB有Python支持（前文有介绍怎么添加Python支持）然后在rCore-Tutorial-v3的根目录下添加一个脚本：
+```shell
+export RUST_GDB=riscv64-unknown-elf-gdb
+rust-gdb "$@"
+```
+将这个脚本命名为`riscv64-unknown-elf-gdb-rust.sh`，添加可执行权限，然后将刚才launch.json中的`"gdbpath": "riscv64-unknown-elf-gdb"`改为
+`"gdbpath": "${workspaceRoot}/riscv64-unknown-elf-gdb-rust.sh"`.
+
+
+`RUST_GDB=riscv64-unknown-elf-gdb`（一种方法是，在~/.bashrc里添加一行`export RUST_GDB=riscv64-unknown-elf-gdb`）然后将launch.json里的gdbpath改为`rust-gdb`.
+
 ### 使用
 
 1. 在code-debug文件夹下`git pull`更新软件仓库，确保代码是最新的，然后按F5运行插件，这时会打开一个新的VSCode窗口。 **后续操作步骤均在新窗口内完成！**

@@ -87,7 +87,7 @@ class AddressSpaces {
 	///此处是一个权宜之计，对于当前版本的rCore刚好能用。
 	///注意path只要包含src/bin就会被判定为用户程序
 	public pathToSpaceName(path: string): string {
-		if (path.includes("easy-fs/src") || path.includes("user/src") || path.includes("src/bin")) {
+		if (path.includes("easy-fs/src") || path.includes("user/src") || path.includes("src/bin") || path.includes("build/app")) {
 			const s = path.split("/");
 			return s[s.length - 3] + "/" + s[s.length - 2] + "/" + s[s.length - 1];
 		} else {
@@ -348,7 +348,33 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				info.outOfBandRecord[0].output[3][1][5][1] === this.KERNEL_OUT_BREAKPOINTS_LINE+""
 			) {
 				this.sendEvent({ event: "kernelToUserBorder" } as DebugProtocol.Event);
-			}
+			}else if(info.outOfBandRecord[0].output[3][1][3][1] === "src/syscall/process.rs" &&
+			info.outOfBandRecord[0].output[3][1][5][1] === "49")//TODO hardcoded
+			{
+				this.miDebugger.sendCliCommand("p path").then((result)=>{
+					
+					let info=this.miDebugger.getMIinfo(result.token);
+					
+					const pname_ = /(?<=")(.*?)(?=\\)/g;
+					let info1=JSON.stringify(info);
+					this.sendEvent({ event: "showInformationMessage", body: "info.length-1= "+(info.length-1).toString()  } as DebugProtocol.Event);
+					let all_info="";
+					for(let i=info.length-1;i>=0;i--){
+						all_info=all_info + info[i].outOfBandRecord[0].content;
+					}
+					this.sendEvent({ event: "showInformationMessage", body: "all info: "+all_info  } as DebugProtocol.Event);
+					let addr_regex=/(0x|0X)[a-fA-F0-9]{8}/;
+					let pname0_addr=all_info.match(addr_regex)[0].toString();
+					this.sendEvent({ event: "newProcessNameAddr", body: pname0_addr  } as DebugProtocol.Event);
+
+					// let len_regex = /(?<= len: )[0-9]+/;
+					// let pname0_len=all_info.match(len_regex)[0].toString();
+
+					// let pname=pname0.slice(0,10);
+					// this.sendEvent({ event: "get_pname", body: pname } as DebugProtocol.Event);
+					
+		})
+	}
 		} else {
 			const userProgramName = this.addressSpaces.pathToSpaceName(
 				info.outOfBandRecord[0].output[3][1][4][1]
@@ -1281,7 +1307,7 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 					response as DebugProtocol.SetBreakpointsResponse,
 					{
 						source: { path: "src/trap/mod.rs" } as DebugProtocol.Source,
-						breakpoints: [{ line: 30 }] as DebugProtocol.SourceBreakpoint[],
+						breakpoints: [{ line: this.GO_TO_KERNEL_LINE }] as DebugProtocol.SourceBreakpoint[],
 					} as DebugProtocol.SetBreakpointsArguments
 				);
 				//this.sendEvent({ event: "eventTest"} as DebugProtocol.Event);
@@ -1305,6 +1331,14 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				break;
 			case 'send_gdb_mi_command':
 				this.miDebugger.sendCommand(args);
+				break;
+			case 'getStringFromAddr':
+				this.miDebugger.sendCliCommand("x /s "+args).then((result)=>{
+					// let quotation_regex = /"(.*?)"/;
+					// let info=this.miDebugger.getMIinfo(result.token);
+					// this.sendEvent({ event: "printThisInConsole", body: info  } as DebugProtocol.Event);
+				});
+				break;
 			default:
 				return this.sendResponse(response);
 		}
