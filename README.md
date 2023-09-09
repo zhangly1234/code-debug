@@ -456,14 +456,40 @@ todos:
 
 ### 安装-方法1-自动配置脚本
 
-1. 请保证你的磁盘空间足够大，建议80G
-2. 下载test.sh
-3. 执行chmod +x test.sh命令，为文件添加权限
-4. 执行./test.sh，开始执行，请保证网络畅通，可能要很长时间
-5. 执行完毕后配置环境变量：
-    1. export PATH=$PATH:/home/zly/qemu-system-riscv64/build
-    2. export PATH=$PATH:/opt/riscv/bin
-6. 使用命令检查是否安装成功：
+#### 请保证你的磁盘空间足够大，建议70G
+
+#### 安装Ubuntu
+
+[解决安装Ubuntu找不到“继续”按钮的问题](https://blog.csdn.net/weixin_54630384/article/details/127767424?spm=1001.2101.3001.6650.7&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-7-127767424-blog-120077249.235%5Ev38%5Epc_relevant_anti_vip_base&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-7-127767424-blog-120077249.235%5Ev38%5Epc_relevant_anti_vip_base&utm_relevant_index=8)
+
+[vmware和主机间复制粘贴文件、文字_](https://blog.csdn.net/stanlyYP/article/details/127107448)
+
+[ubuntu中文输入法无法打中文的解决办法](https://blog.csdn.net/qq_39810051/article/details/131981407)
+
+[VMware共享文件夹设置](https://blog.csdn.net/weixin_54051652/article/details/128316296)
+
+#### 下载仓库
+
+```plain
+git clone https://github.com/chenzhiy2001/code-debug
+git clone --recursive https://github.com/chenzhiy2001/rcore-ebpf
+```
+
+#### 配置环境
+
+1. 下载test.sh，尽量在home目录下运行
+2. 执行chmod +x test.sh命令，为文件添加权限
+3. 执行./test.sh，开始执行，请保证网络畅通，可能要很长时间
+4. 执行完毕后配置环境变量：
+```plain
+vim ~/.bashrc
+在.bashrc最后面添加以下语句
+export PATH=$PATH:/home/zly/qemu-system-riscv64/build
+export PATH=$PATH:/opt/riscv/bin
+退出
+source ~/.bashrc
+```
+5. 使用命令检查是否安装成功：
     1. rustc --version   (rustc 1.74.0-nightly (59a829484 2023-08-30))
     2. npm -v  (版本在9以上)
     3. node -v (版本在18以上)
@@ -474,9 +500,34 @@ todos:
 print("114514")
 end 
 ```
-7. 如果还是有问题请查看test.sh文件，里面用回车符隔开了下载各个工具的命令，可以把它单独复制出来到新的文件重新运行
+6. 如果还是有问题请查看test.sh文件，里面用回车符隔开了下载各个工具的命令，可以把它单独复制出来到新的文件重新运行
+#### 安装vscode
 
-8. 参考[这里](#待调试OS的配置)配置你的待调试OS
+1. [Download Visual Studio Code - Mac, Linux, Windows](https://code.visualstudio.com/Download)下载.deb
+2. 执行下面命令，注意换文件名
+```plain
+ sudo dpkg -i code_1.71.2-1663191218_amd64.deb
+```
+
+#### 编译rcore-ebpf
+
+* 修改user/ebpf/build.sh里面的路径
+* 如果在编译过程中遇到“找不到clang-12”报错，执行下面命令
+```plain
+sudo apt-get install clang-12
+```
+* 安装cmake 命令：
+```plain
+sudo apt-get install cmake
+```
+* 如果遇到“ riscv64-linux-musl-gcc未找到”
+在musl.cc下载 riscv64-linux-musl-cross.tgz 并解压到主目录，将riscv64-linux-musl-cross/bin 加入环境变量：
+
+```plain
+export PATH=$PATH:/home/path/to/riscv64-linux-musl-cross/bin
+```
+* launch.json文件，记得修改路径
+
 ### 安装-方法2-手动安装
 
 #### 环境配置
@@ -654,7 +705,7 @@ end
    }
    ```
 
-1. （可选）如果你要用eBPF Panel，需要在rCore-Tutorial-v3的根目录下添加一个脚本：
+1. 为了用eBPF Panel，需要在rCore-Tutorial-v3的根目录下添加一个脚本：
 
 ```shell
 tty > ./qemu_tty

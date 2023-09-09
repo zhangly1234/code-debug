@@ -36,7 +36,7 @@ if command -v rustc &> /dev/null; then
         rustup default nightly
     else
         echo -e "${YELLOW}Downloading and installing nightly Rust${RESET}"| tee -a output1.txt
-        if curl https://sh.rustup.rs -sSf | sh; then
+        if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh; then
     	    source $HOME/.cargo/env
     	    if rustup install nightly; then
     	        rustup default nightly
@@ -52,7 +52,7 @@ if command -v rustc &> /dev/null; then
     fi
 else 
     echo -e "${YELLOW}Downloading Rust${RESET}"| tee -a output1.txt
-    if curl https://sh.rustup.rs -sSf | sh; then
+    if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh; then
     	source $HOME/.cargo/env
     	if rustup install nightly; then
     	    rustup default nightly
@@ -73,43 +73,55 @@ fi
 
 
 #安装qemu
-sudo apt install qemu-system-misc
 echo -e "${YELLOW}安装qemu依赖的包......${RESET}" | tee -a output1.txt
 sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev \
               gawk build-essential bison flex texinfo gperf libtool patchutils bc \
               zlib1g-dev libexpat-dev pkg-config  libglib2.0-dev libpixman-1-dev libsdl2-dev \
               git tmux python3 python3-pip ninja-build coreutils xautomation xdotool
-qemu_version=$(qemu-system-riscv64 --version 2>&1)
-qemu_version=${qemu_version#*version }    
-echo -e "${YELLOW}qemu version: $(qemu-system-riscv64 --version)${RESET}" | tee -a output1.txt
-# 如果没有安装 QEMU 或版本号小于 7.0.0，则重新下载
-if [[ -z "$qemu_version" || "$qemu_version" < "7.0.0" ]]; then
-    echo -e "${YELLOW}QEMU is not installed or version is less than 7.0.0.${RESET}" | tee -a output1.txt
-    echo -e "${YELLOW}如果qemu存在，需要先卸载.${RESET}" | tee -a output1.txt
-    sudo apt remove qemu-system-misc
-    echo -e "${YELLOW}重新下在qemu....${RESET}" | tee -a output1.txt
+# 检查是否已经安装 QEMU
+echo -e "${YELLOW}Verify if QEMU is installed.${RESET}" | tee -a output1.txt
+if command -v qemu-system-riscv64 &> /dev/null; then
+    # 如果已经安装，检查版本是否小于 7.0.0
+    current_version=$(qemu-system-riscv64 --version | grep -oP 'QEMU emulator version \K[0-9.]+')
+    required_version="7.0.0"
+
+    if [[ "$(printf '%s\n' "$required_version" "$current_version" | sort -V | head -n1)" == "$required_version" ]]; then
+        echo -e "${YELLOW}QEMU is already installed and the version is up to date.${RESET}" | tee -a output1.txt
+    else
+        echo -e "${YELLOW}QEMU is installed but the version is outdated. Downloading the latest version...${RESET}" | tee -a output1.txt
+        if git clone https://github.com/chenzhiy2001/qemu-system-riscv64; then
+            echo -e "${YELLOW}QEMU has been installed.${RESET}"| tee -a output1.txt
+            # 编译安装并配置 RISC-V 支持
+            cd qemu-system-riscv64
+            echo -e "${YELLOW}编译qemu.....${RESET}"| tee -a output1.txt
+            ./configure --target-list=riscv64-softmmu,riscv64-linux-user  # 如果要支持图形界面，可添加 " --enable-sdl" 参数
+            make -j$(nproc)    
+            cd ..
+            echo -e "${YELLOW}编译完成.${RESET}" | tee -a output1.txt
+        else
+            echo -e "${YELLOW}Error: Failed to clone qemu-system-riscv64.${RESET}"| tee -a output1.txt
+            exit 1
+        fi
+    fi
+else
+    # 如果未安装 QEMU，则下载最新版本
+    echo -e "${YELLOW}QEMU is not installed. Downloading the latest version...${RESET}" | tee -a output1.txt
     if git clone https://github.com/chenzhiy2001/qemu-system-riscv64; then
         echo -e "${YELLOW}下载完成${RESET}"| tee -a output1.txt
+        # 编译安装并配置 RISC-V 支持
+        cd qemu-system-riscv64
+        echo -e "${YELLOW}编译qemu.....${RESET}"| tee -a output1.txt
+        ./configure --target-list=riscv64-softmmu,riscv64-linux-user  # 如果要支持图形界面，可添加 " --enable-sdl" 参数
+        make -j$(nproc)    
+        cd ..
+        echo -e "${YELLOW}编译完成.${RESET}" | tee -a output1.txt
     else
         echo -e "${YELLOW}Error: Failed to clone qemu-system-riscv64.${RESET}"| tee -a output1.txt
         exit 1
     fi
-    # 编译安装并配置 RISC-V 支持
-    cd qemu-system-riscv64
-    echo -e "${YELLOW}编译qemu.....${RESET}"| tee -a output1.txt
-    ./configure --target-list=riscv64-softmmu,riscv64-linux-user  # 如果要支持图形界面，可添加 " --enable-sdl" 参数
-    make -j$(nproc)    
-    cd ..
-    echo -e "${YELLOW}QEMU has been installed.${RESET}" | tee -a output1.txt
-    export PATH=$PATH:/home/zly/qemu-system-riscv64/build
-else
-    echo -e "${YELLOW}QEMU version $qemu_version is already installed.${RESET}" | tee -a output1.txt
-    export PATH=$PATH:/home/zly/qemu-system-riscv64/build
 fi
 
-#此时我们可以确认 QEMU 的版本：
-#qemu-system-riscv64 --version
-#qemu-riscv64 --version
+
 
 
 
@@ -167,30 +179,6 @@ else
     echo -e "${YELLOW}克隆git仓库失败${RESET}" | tee -a output1.txt
     exit 1 
 fi
-export PATH=$PATH:/opt/riscv/bin
-
-
-
-
-
-
-#下载操作系统和调试器仓库
-echo -e "${YELLOW}下载code-debug仓库...${RESET}" | tee -a output1.txt
-if git clone https://github.com/chenzhiy2001/code-debug; then
-    echo -e "${YELLOW}code-debug仓库下载完成${RESET}" | tee -a output1.txt
-else
-    echo -e "${YELLOW}克隆git仓库失败${RESET}" | tee -a output1.txt
-    exit 1
-fi
-
-echo -e "${YELLOW}下载rcore仓库...${RESET}" | tee -a output1.txt
-if git clone --recursive https://github.com/chenzhiy2001/rcore-ebpf; then
-    echo -e "${YELLOW}rcore仓库下载完成${RESET}" | tee -a output1.txt
-else
-    echo -e "${YELLOW}克隆git仓库失败${RESET}" | tee -a output1.txt
-    exit 1
-fi
-
 
 
 } | tee output.txt
