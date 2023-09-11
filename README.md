@@ -2,6 +2,24 @@
 
 支持Rust语言的源代码级内核调试工具
 
+## 项目整体框架
+![](./docs/imgs/框架.png)
+
+## 项目仓库
+
+| 仓库名                    | 仓库描述                                                     | Github 地址                                                 | commit数量（2022年8月至今）                                  |
+| ------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------ |
+| code-debug                | 本仓库                                                       | <https://github.com/chenzhiy2001/code-debug>                | 124                                                          |
+| ruprobes                  | 我们移植的uprobe模块和详细的移植文档                         | <https://github.com/chenzhiy2001/ruprobes>                  | 5                                                            |
+| rcore-ebpf(全小写)        | 整合了ebpf,kprobe,uprobe模块的rCore-Tutorial-v3              | <https://github.com/chenzhiy2001/rcore-ebpf>                | 8                                                            |
+| uCore-Tutorial-Test-2022A | rcore-ebpf的C程序支持                                        | <https://github.com/chenzhiy2001/uCore-Tutorial-Test-2022A> | 2                                                            |
+| trap_context_riscv        | trap_context crate （用于uprobe移植）                        | <https://github.com/chenzhiy2001/trap_context_riscv>        | 5                                                            |
+| rCore-Tutorial-v3         | 修改版rCore-Tutorial-v3，主要包括多个实验分支的调试器部分功能适配，以及main分支的调试器全功能适配 | <https://github.com/chenzhiy2001/rCore-Tutorial-v3>         | 11（包括所有分支）                      |
+| qemu-system-riscv64       | 修改版的Qemu虚拟机                                           | <https://github.com/chenzhiy2001/qemu-system-riscv64>       | 1(关于我们对Qemu做的修改，可以看[文档3.3.2节](./最终报告.pdf)) |
+| rustsbi-qemu              | 修改版的RustSBI                                              | <https://github.com/chenzhiy2001/rustsbi-qemu>              | 1(关于我们对RustSBI做的修改，可以看[文档3.3.2节](./最终报告.pdf)) |
+| code-debug-doc            | 旧文档仓库，记录了6月之前的工作                              | <https://github.com/chenzhiy2001/code-debug-doc>            | 13                                                           |
+
+
 ## 引言
 
 ### 项目背景
@@ -862,13 +880,10 @@ Vec和VecDeque的pointer值通过gdb查看是错的（都是0x1,0x2之类的很�
 2. without filter (brute force): sendCliCommand()
 
 
-## 开发记录和知识库（待整理）
+## 开发记录文档
 
-### 2023年7月
-docs/journal文件夹
-所有文件加日期
-### 2023年
-docs文件夹
+### 2023年2月之后
+见[这里](./README-OSComp2023.md)
 
 ### 2022-2023年2月
 - [在线版本(观看效果更佳)](https://shimo.im/docs/hRQk6dXkxHp9pR3T)
