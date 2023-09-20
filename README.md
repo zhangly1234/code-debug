@@ -8,7 +8,7 @@
 - 2023.08.16 [决赛演示视频](./演示视频.mp4)
 
 ## 项目整体框架
-![](./docs/imgs/framework.png)
+![项目整体框架](./docs/imgs/framework.png)
 
 
 ## 项目仓库
