@@ -2,8 +2,14 @@
 
 支持Rust语言的源代码级内核调试工具
 
+- 2023.09.20 [2023年操作系统比赛第17场报告会PPT](./oscomp_share17_rust_debugger.pptx)
+- 2023.08.20 [决赛PPT](./%E7%AD%94%E8%BE%A9PPT.pptx)
+- 2023.08.15 [决赛项目文档](./最终报告.pdf)
+- 2023.08.16 [决赛演示视频](./演示视频.mp4)
+
 ## 项目整体框架
-![](./docs/imgs/框架.png)
+![](./docs/imgs/framework.png)
+
 
 ## 项目仓库
 
