@@ -70,21 +70,19 @@
 				{
 					"command": "code-debug.registerSelectedSymbolInKernel",
 					"group": "9_cutcopypaste"
-				  },
+				},
 				{
-				  "command": "code-debug.registerSelectedSymbolInUserSpace",
-				  "group": "9_cutcopypaste"
+					"command": "code-debug.registerSelectedSymbolInUserSpace",
+					"group": "9_cutcopypaste"
 				}
-
-			  ]
+			]
 		},
 		"commands": [
-			
 			{
 				"command": "code-debug.eBPFPanel",
 				"title": "eBPF WebView",
 				"category": "CoreDebugger"
-			  },
+			},
 			{
 				"command": "code-debug.examineMemoryLocation",
 				"title": "Code-Debug: Examine memory location"

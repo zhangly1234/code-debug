@@ -352,17 +352,15 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 			info.outOfBandRecord[0].output[3][1][5][1] === "49")//TODO hardcoded
 			{
 				this.miDebugger.sendCliCommand("p path").then((result)=>{
-					
 					let info=this.miDebugger.getMIinfo(result.token);
-					
-					const pname_ = /(?<=")(.*?)(?=\\)/g;
-					let info1=JSON.stringify(info);
-					this.sendEvent({ event: "showInformationMessage", body: "info.length-1= "+(info.length-1).toString()  } as DebugProtocol.Event);
+					// const pname_ = /(?<=")(.*?)(?=\\)/g;
+					// let info1=JSON.stringify(info);
+					//this.sendEvent({ event: "showInformationMessage", body: "info.length-1= "+(info.length-1).toString()  } as DebugProtocol.Event);
 					let all_info="";
 					for(let i=info.length-1;i>=0;i--){
 						all_info=all_info + info[i].outOfBandRecord[0].content;
 					}
-					this.sendEvent({ event: "showInformationMessage", body: "all info: "+all_info  } as DebugProtocol.Event);
+					//this.sendEvent({ event: "showInformationMessage", body: "all info: "+all_info  } as DebugProtocol.Event);
 					let addr_regex=/(0x|0X)[a-fA-F0-9]{8}/;
 					let pname0_addr=all_info.match(addr_regex)[0].toString();
 					this.sendEvent({ event: "newProcessNameAddr", body: pname0_addr  } as DebugProtocol.Event);
@@ -1333,10 +1331,20 @@ example: {"token":43,"outOfBandRecord":[],"resultRecords":{"resultClass":"done",
 				this.miDebugger.sendCommand(args);
 				break;
 			case 'getStringFromAddr':
-				this.miDebugger.sendCliCommand("x /s "+args).then((result)=>{
-					// let quotation_regex = /"(.*?)"/;
-					// let info=this.miDebugger.getMIinfo(result.token);
-					// this.sendEvent({ event: "printThisInConsole", body: info  } as DebugProtocol.Event);
+				this.miDebugger.sendCliCommand("x/s "+args).then((result)=>{
+					let info=this.miDebugger.getMIinfo(result.token);
+					//console.log("info:"+info);
+					//let info1=JSON.stringify(info);
+					// console.log("info1:"+info1);
+					let all_info="";
+					for(let i=info.length-1;i>=0;i--){
+						all_info=all_info + info[i].outOfBandRecord[0].content;
+					}
+					console.log("all_info:"+all_info);
+					let quotation_regex = /"(.*?)"/;
+					let userDebugFile= all_info.match(quotation_regex)[0].toString().slice(1, -1);
+					console.log("userDebugFile:"+userDebugFile);
+					this.sendEvent({ event: "newprocessname", body: userDebugFile  } as DebugProtocol.Event);
 				});
 				break;
 			default:

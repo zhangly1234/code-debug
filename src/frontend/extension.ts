@@ -140,7 +140,7 @@ export function activate(context: vscode.ExtensionContext) {
 	//=========================================================================================
 	const kernelInOutBreakpointArgs = 1;
 	let userDebugFile = "initproc"; //可以修改为其它用户程序名，如matrix
-	const your_path_to_core = os.homedir() + "/rCore-Tutorial-v3-eBPF/rCore-Tutorial-v3"; //tag:oscomp2023 org:/rCore-Tutorial-v3
+	const your_path_to_core = os.homedir() + "/rcore-ebpf"; //tag:oscomp2023 org:/rCore-Tutorial-v3
 	//========================================================================================
 
 	const removeDebugFileCmd = vscode.commands.registerCommand("code-debug.removeDebugFile", () => {
@@ -294,6 +294,7 @@ export function activate(context: vscode.ExtensionContext) {
 							console.log(message.body);
 						} else if (message.event === "showInformationMessage") {
 							vscode.window.showInformationMessage(message.body);
+							console.log("showInformationMessage:"+message.body);
 						} else if (message.event === "printThisInConsole") {
 							console.log(message.body);
 						} else if (message.event === "showErrorMessage") {
@@ -301,40 +302,37 @@ export function activate(context: vscode.ExtensionContext) {
 						} else if (message.event === "update") {
 							vscode.window.showInformationMessage("断点信息表格已经更新");
 							
-						} else if(message.event === "get_pname"){
-							console.log("get pname:"+message.body);
-							userDebugFile=message.body;
-						}else if (message.event === "newProcessNameAddr") {
-							console.log("newProcessNameAddr");
-						
+						} 
+						// else if(message.event === "get_pname"){
+						// 	console.log("get pname:"+message.body);
+						// 	userDebugFile=message.body;
+						// }
+						else if (message.event === "newProcessNameAddr") {
+							console.log("newProcessNameAddr:"+message.body);
 							vscode.debug.activeDebugSession?.customRequest("getStringFromAddr", message.body);
-
-
-
-							// let quotation_regex = /"(.*?)"/;
-	
-							
-							//let process_name = info[0].outOfBandRecord[0].content.match(quotation_regex)[0].toString();
-
-
-
-
-
 							
 						}
-						else if (message.event === "output"){
-							if (message.body.output.startsWith('eBPF Message: ')){//messages sent from 
-								vscode.window.showInformationMessage(message.body.output);
-							}
-							if (message.body.output.startsWith('0x')&&message.body.output.endsWith('"\n')){//new process names
-								vscode.window.showInformationMessage(message.body.output);
-								let quotation_regex = /"(.*?)"/;
-								let newProcessName=message.body.output;								;
-								userDebugFile= newProcessName.match(quotation_regex)[0].toString().slice(1, -1);
-								vscode.window.showInformationMessage("new process "+userDebugFile+" updated");
-							}
-							
+						else if (message.event==="newprocessname")
+						{
+							userDebugFile=message.body;
+							vscode.window.showInformationMessage("new process "+userDebugFile+" updated");
+							console.log("new process "+userDebugFile+" updated");
 						}
+						// else if (message.event === "output"){
+						// 	if (message.body.output.startsWith('eBPF Message: ')){//messages sent from 
+						// 		vscode.window.showInformationMessage(message.body.output);
+						// 	}
+						// 	if (message.body.output.startsWith('0x')&&message.body.output.endsWith('"\n')){//new process names
+						// 		vscode.window.showInformationMessage(message.body.output);
+						// 		console.log("message.body.output:",message.body.output);
+						// 		let quotation_regex = /"(.*?)"/;
+						// 		let newProcessName=message.body.output;								;
+						// 		userDebugFile= newProcessName.match(quotation_regex)[0].toString().slice(1, -1);
+						// 		vscode.window.showInformationMessage("new process "+userDebugFile+" updated");
+						// 		console.log("new process "+userDebugFile+" updated");
+						// 	}
+							
+						// }
 					}
 				},
 			};

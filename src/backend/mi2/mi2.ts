@@ -64,11 +64,11 @@ export class MI2 extends EventEmitter implements IBackend {
 			{
 				info.push(this.miarray[i]);
 				// console.log("getMIinfo:"+i+" "+this.miarray);
-				delete this.miarray[i];
+				//delete this.miarray[i];
 			}
 		}
 		return info;
-		//throw new Error("Method not implemented.");
+		
 	}
 
 	load(cwd: string, target: string, procArgs: string, separateConsole: string): Thenable<any> {
@@ -291,12 +291,12 @@ export class MI2 extends EventEmitter implements IBackend {
 				else{
 					parsed.token=this.num+1;
 					this.miarray.push(parsed);
-					if (this.miarray.length>=100)
-					{
-						this.miarray.splice(0,90);
-						const rest=this.miarray.splice(89);
-						this.miarray=rest;
-					}
+					// if (this.miarray.length>=100)
+					// {
+					// 	this.miarray.splice(0,90);
+					// 	const rest=this.miarray.splice(89);
+					// 	this.miarray=rest;
+					// }
 				}				
 				if (this.debugOutput)
 				{
